@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101110">
+    <meta name="description" content="RV — a competition where luck is the only strategy. Run a full season or host a standalone randomized event.">
+    <title>RV — Randomized Version</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-service.js"></script>
+    <script src="events.js"></script>
+    <script src="letter-words.js"></script>
+    <script src="additional-events.js"></script>
+    <script src="event-engine.js"></script>
+    <script src="season-setup.js"></script>
+    <script src="season-rules.js"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="RV home">
+          <span class="brand-mark">R<span>V</span></span>
+          <span class="brand-name">RANDOMIZED<br>VERSION</span>
+        </a>
+        <div class="topbar-right">
+          <div class="season-picker">
+            <span class="season-dot"></span>
+            <span id="season-label">SEASON 01</span>
+            <span class="season-status" id="season-status">IN PROGRESS</span>
+          </div>
+          <button class="icon-button" id="rules-button" aria-label="Read the rules" title="Read the rules">?</button>
+          <div class="account-control">
+            <span class="account-email" id="account-email" hidden></span>
+            <button class="button button-small button-outline" id="auth-button" type="button">Sign in</button>
+          </div>
+          <button class="button button-small button-outline" id="new-season-button">＋ <span>New season</span></button>
+        </div>
+      </header>
+
+      <nav class="mode-tabs" aria-label="RV workspace">
+        <button class="mode-tab is-active" type="button" data-workspace="season-view" aria-selected="true">Season</button>
+        <button class="mode-tab" type="button" data-workspace="events-view" aria-selected="false">Events</button>
+      </nav>
+
+      <main>
+        <div id="season-view">
+        <section class="intro">
+          <div class="eyebrow"><span class="eyebrow-line"></span> THE GAME OF PURE CHANCE</div>
+          <h1>Luck is the<br><span>only strategy.</span></h1>
+          <p class="intro-copy">Every event is a fresh roll of the dice. Play the season, climb the table, and let the randomizer decide.</p>
+          <div class="intro-meta">
+            <span><span class="live-dot"></span> <span id="intro-status">SEASON IN PLAY</span></span>
+            <span class="meta-divider"></span>
+            <span id="format-label">20 EVENTS · SINGLE FINALE</span>
+          </div>
+        </section>
+
+        <section class="season-overview" aria-label="Season overview">
+          <article class="stat-card">
+            <span class="stat-label">CURRENT EVENT</span>
+            <div class="stat-value"><span id="event-number">01</span><span class="stat-total"> / <span id="event-total">20</span></span></div>
+            <span class="stat-foot" id="event-kind">THE SEASON OPENER</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">COMPETING</span>
+            <div class="stat-value"><span id="active-count">12</span><span class="stat-total"> / <span id="player-total">12</span></span></div>
+            <span class="stat-foot">PLAYERS IN THE FIELD</span>
+          </article>
+          <article class="stat-card stat-card-feature">
+            <span class="stat-label">SEASON LEADER</span>
+            <div class="stat-value leader-value" id="leader-name">—</div>
+            <span class="stat-foot"><span id="leader-points">0</span> TOTAL POINTS</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">EVENT POINTS</span>
+            <div class="stat-value" id="point-range">12 → 240</div>
+            <span class="stat-foot">THE STAKES KEEP RISING</span>
+          </article>
+        </section>
+
+        <section class="main-grid">
+          <article class="event-card" aria-labelledby="event-card-heading">
+            <div class="event-card-top">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> UP NEXT</div>
+                <h2 id="event-card-heading">The next draw</h2>
+              </div>
+              <span class="event-index" id="event-index">EVENT 01 / 20</span>
+            </div>
+
+            <section class="season-event-config" id="season-event-config" aria-label="Next event setup">
+              <label class="form-label" for="season-event-choice">Choose this event</label>
+              <select class="text-input" id="season-event-choice"></select>
+              <div class="standard-rules-box season-standard-rules">
+                <strong>STANDARD RULES</strong>
+                <p id="season-standard-rules">Choose an event to see its standard rules.</p>
+              </div>
+              <fieldset class="rules-mode-options">
+                <legend class="form-label">Event rules</legend>
+                <label><input type="radio" name="seasonRulesMode" value="standard" checked> Use standard rules</label>
+                <label><input type="radio" name="seasonRulesMode" value="custom"> Customize settings</label>
+              </fieldset>
+              <div class="standalone-settings season-event-settings" id="season-event-settings"></div>
+            </section>
+
+            <div class="event-art" id="event-art" aria-label="Random event preview">
+              <div class="art-grain"></div>
+              <div class="art-caption"><span class="art-type" id="art-type">YOUR FIRST DRAW</span><span class="art-mark" id="art-mark">RV—01</span></div>
+              <div class="art-center" id="art-center">?</div>
+              <div class="art-corner">NO SKILL<br>REQUIRED</div>
+            </div>
+
+            <div class="event-description">
+              <div>
+                <span class="detail-label">EVENT FORMAT</span>
+                <h3 id="event-title">Waiting on chance</h3>
+              </div>
+              <p id="event-description">The event will reveal itself when you draw. No practice, no preparation—just pure luck.</p>
+            </div>
+            <div class="event-mechanic" id="event-mechanic" hidden></div>
+
+            <div class="event-footer">
+              <div class="payout">
+                <span class="detail-label">TOP SCORE THIS EVENT</span>
+                <strong id="top-score">— <small>PTS</small></strong>
+              </div>
+              <button class="button button-primary" id="draw-button"><span class="button-dice">✳</span> Draw the event <span class="button-arrow">↗</span></button>
+            </div>
+            <p class="event-notice" id="event-notice" aria-live="polite"></p>
+            <div class="event-results" id="event-results" hidden></div>
+          </article>
+
+          <aside class="leaderboard-card">
+            <div class="leaderboard-heading">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> THE FIELD</div>
+                <h2>Leaderboard<span class="heading-period">.</span></h2>
+              </div>
+              <span class="sort-label">TOTAL PTS <span>↓</span></span>
+            </div>
+            <div class="medal-key" aria-label="Season medal totals">
+              <span>EVENT MEDALS</span><b class="gold-count">G · GOLD</b><b class="silver-count">S · SILVER</b><b class="bronze-count">B · BRONZE</b>
+            </div>
+            <div class="scoreboard-columns"><span>PLACE</span><span>USERNAME</span><span>COLOR NAME</span><span>G / S / B</span><span>POINTS</span></div>
+            <div class="leaderboard-list" id="leaderboard-list" aria-live="polite"></div>
+            <div class="leaderboard-footer">
+              <span><span class="legend-dot legend-active"></span> COMPETING</span>
+              <span><span class="legend-dot legend-out"></span> ELIMINATED</span>
+            </div>
+          </aside>
+        </section>
+
+        <section class="archive-section">
+          <div class="history-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> SEASONS ALREADY PLAYED</div>
+              <h2>Past seasons<span class="heading-period">.</span></h2>
+            </div>
+            <span id="archive-count" class="history-count">0 SEASONS</span>
+          </div>
+          <div class="archive-list" id="archive-list">
+            <div class="history-empty">Finished or replaced seasons appear here in your archive.</div>
+          </div>
+        </section>
+
+        <section class="archive-section user-library-section">
+          <div class="history-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> RETURNING PLAYERS</div>
+              <h2>User & color library<span class="heading-period">.</span></h2>
+            </div>
+            <span class="history-count" id="user-library-count">0 USERS</span>
+          </div>
+          <p class="library-intro" id="library-page-status"></p>
+          <div class="profile-library-list" id="profile-library-list"></div>
+        </section>
+
+        <section class="history-section">
+          <div class="history-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> IT'S ALL ON THE RECORD</div>
+              <h2>Event history<span class="heading-period">.</span></h2>
+            </div>
+            <span id="history-count" class="history-count">0 EVENTS PLAYED</span>
+          </div>
+          <div class="history-list" id="history-list"></div>
+        </section>
+        <section class="history-section playoff-reset-history" id="playoff-reset-history" hidden>
+          <div class="history-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> PLAYOFF SCORE CHANGES</div>
+              <h2>Point reset history<span class="heading-period">.</span></h2>
+            </div>
+          </div>
+          <div id="playoff-reset-list"></div>
+        </section>
+        </div>
+
+        <section class="events-workspace" id="events-view" hidden>
+          <section class="intro events-intro">
+            <div class="eyebrow"><span class="eyebrow-line"></span> STANDALONE EVENT HOSTING</div>
+            <h1>Run one event.<br><span>Your rules.</span></h1>
+            <p class="intro-copy">Choose a format, set the participant list, and use the standard rules or customize the event settings. No season needed.</p>
+          </section>
+
+          <div class="events-layout">
+            <section class="events-catalog-panel">
+              <div class="history-heading">
+                <div>
+                  <div class="eyebrow"><span class="eyebrow-line"></span> EVENT CATALOGUE</div>
+                  <h2>Choose an event<span class="heading-period">.</span></h2>
+                </div>
+              </div>
+              <div class="events-catalog" id="events-catalog"></div>
+            </section>
+
+            <section class="standalone-event-panel">
+              <div class="standalone-event-heading">
+                <div>
+                  <div class="eyebrow"><span class="eyebrow-line"></span> EVENT SETUP</div>
+                  <h2 id="standalone-event-title">Choose an event</h2>
+                </div>
+              </div>
+              <p class="standalone-event-description" id="standalone-event-description">Choose an event format from the catalogue to see its rules.</p>
+              <div class="standard-rules-box">
+                <strong>STANDARD RULES</strong>
+                <p id="standalone-standard-rules">Standard rules will appear here.</p>
+              </div>
+              <form id="standalone-event-form">
+                <label class="form-label" for="standalone-participants">Participants <span>one name per line; order matters only for turn-based formats</span></label>
+                <textarea class="text-input standalone-participants" id="standalone-participants" rows="8" placeholder="Enter one participant per line" required></textarea>
+                <fieldset class="rules-mode-options">
+                  <legend class="form-label">Event rules</legend>
+                  <label><input type="radio" name="rulesMode" value="standard" checked> Use standard rules</label>
+                  <label><input type="radio" name="rulesMode" value="custom"> Customize settings</label>
+                </fieldset>
+                <div class="standalone-settings" id="standalone-settings"></div>
+                <p class="form-error" id="standalone-error" role="alert"></p>
+                <div class="standalone-actions">
+                  <button class="button button-primary" id="standalone-start" type="submit">Start event <span class="button-arrow">↗</span></button>
+                  <button class="button button-outline" id="standalone-reset" type="button">Reset event</button>
+                </div>
+              </form>
+              <section class="standalone-runner" id="standalone-runner" aria-live="polite" hidden></section>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <a class="brand footer-brand" href="#" aria-label="RV home">
+          <span class="brand-mark">R<span>V</span></span>
+          <span class="brand-name">RANDOMIZED<br>VERSION</span>
+        </a>
+        <span>NO STRATEGY. NO SECOND-GUESSING. JUST RANDOM.</span>
+        <span class="footer-edition">RV / <span id="footer-season">01</span></span>
+      </footer>
+    </div>
+
+    <dialog class="modal setup-modal" id="setup-modal">
+      <form class="modal-content" id="setup-form">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> FRESH START</div>
+            <h2>Set the field<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <label class="form-label" for="season-name">Season name</label>
+        <input class="text-input" id="season-name" name="seasonName" maxlength="32" placeholder="Season 01" required>
+        <label class="form-label" for="season-type">Season format</label>
+        <select class="text-input" id="season-type" name="seasonType">
+          <option value="standard" selected>Standard RV</option>
+          <option value="playoffs">Playoffs</option>
+        </select>
+        <label class="form-label" for="participant-count">Number of participants <span>20–48 · usernames and color identities are unique in a season</span></label>
+        <input class="text-input participant-count-input" type="number" id="participant-count" name="participantCount" min="20" max="48" value="20" required>
+        <p class="library-status" id="library-status" role="status"></p>
+        <datalist id="user-library"></datalist>
+        <datalist id="color-library"></datalist>
+        <div class="roster-editor" id="roster-editor"></div>
+        <fieldset class="format-options" id="finale-format-options">
+          <legend class="form-label">Finale format</legend>
+          <label class="format-option">
+            <input type="radio" name="finaleFormat" value="single" checked>
+            <span class="format-card"><strong>Single finale</strong><small>20 events · one last draw</small></span>
+          </label>
+          <label class="format-option">
+            <input type="radio" name="finaleFormat" value="triple">
+            <span class="format-card"><strong>Three-part finale</strong><small>22 events · three draws</small></span>
+          </label>
+        </fieldset>
+        <p class="setup-format-note" id="season-format-note">Standard RV uses gradual rank-based points. Choose a single or three-part finale.</p>
+        <label class="form-label" id="standard-scoring-label" for="standard-scoring-mode">Standard RV point system</label>
+        <select class="text-input" id="standard-scoring-mode">
+          <option value="gradual">Built-in gradual points</option>
+          <option value="custom">Use a named custom point system</option>
+        </select>
+        <section class="custom-point-system" id="custom-point-system" hidden>
+          <label class="form-label" for="scoring-profile-select">Shared point systems</label>
+          <select class="text-input" id="scoring-profile-select">
+            <option value="">Create or copy a point system</option>
+          </select>
+          <label class="form-label" for="scoring-host-name">Point-system name <span>shared with all signed-in hosts; only its creator can update it</span></label>
+          <input class="text-input" id="scoring-host-name" maxlength="48" autocomplete="off" placeholder="Name this point system">
+          <p class="setup-format-note">Enter comma-separated point awards for ranks 1 through the participant count in each event. Values must descend strictly. Use an existing system as-is, or give a copy a new name to publish your own version.</p>
+          <div class="custom-point-schedules" id="custom-point-schedules"></div>
+        </section>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <button class="button button-outline" type="button" data-close-modal>Cancel</button>
+          <button class="button button-primary" type="submit">Start season <span class="button-arrow">↗</span></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal auth-modal" id="auth-modal">
+      <form class="modal-content" id="auth-form">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> YOUR RV ACCOUNT</div>
+            <h2 id="auth-title">Sign in<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <p class="setup-format-note" id="auth-description">Sign in to save your seasons and access the shared points library.</p>
+        <label class="form-label" id="auth-username-label" for="auth-username" hidden>Public username</label>
+        <input class="text-input" id="auth-username" name="username" autocomplete="username" maxlength="32" minlength="3" hidden>
+        <label class="form-label" for="auth-email">Email</label>
+        <input class="text-input" id="auth-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+        <label class="form-label" for="auth-password">Password</label>
+        <input class="text-input" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" required>
+        <label class="form-label" id="auth-confirm-label" for="auth-confirm-password" hidden>Confirm password</label>
+        <input class="text-input" id="auth-confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" hidden>
+        <div class="auth-actions">
+          <button class="button button-outline" type="button" id="auth-mode-toggle">Create account</button>
+          <button class="button button-outline" type="button" id="auth-forgot-password">Forgot password?</button>
+        </div>
+        <p class="form-error" id="auth-message" role="alert" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button class="button button-primary" type="submit" id="auth-submit">Sign in</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal rules-modal" id="rules-modal">
+      <div class="modal-content">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> THE RULES</div>
+            <h2>It really is random<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <ol class="rules-list">
+          <li><strong>Events use different random formats.</strong> The catalogue includes voting, turn-based, round-based, sports, and playing-card events, including Letter Values, Catching, a survival simulation, and randomized sports marks.</li>
+          <li><strong>Final rank is decided before points are awarded.</strong> Event results break ties when possible; unresolved ties get a random extra round. Every rank then receives a distinct point award.</li>
+          <li><strong>The first two events are safe.</strong> Nobody goes home until after Event 3.</li>
+          <li><strong>After Event 3, the lowest total scorers are eliminated.</strong> The cut adjusts to bring the field down to three finalists by Event 20.</li>
+          <li><strong>The finale decides the season.</strong> Choose one event or a three-part finale. The player with the most total points wins.</li>
+          <li><strong>Standard RV points grow with the event number.</strong> The single-finale top award rises to 1,200 at Event 20. For a three-part finale, each part awards one-third of the Event 20 rank schedule (400 for first place). Hosts may instead enter a custom rank table separately for every event.</li>
+          <li><strong>Playoffs run for 20 events with the full cast competing throughout.</strong> Ranks 1–2 earn 40 and 35 points; ranks 3–35 descend by one point per rank, and rank 36 onward earns 1. The first 10 events rank by event wins, then points. Events 10, 13, 16, and 19 qualify the top 16, 12, 8, and 4 for point resets; other participants keep competing and earning points. Later checkpoints narrow the previously qualified group, with prior leaderboard position breaking qualification ties.</li>
+          <li><strong>Playoff points reset at each qualification checkpoint.</strong> Qualifiers reset to 1,000 / 2,000 / 3,000 points plus accumulated stage points after Events 10 / 13 / 16. Event 19 qualifiers reset to 4,000 without stage points. Each event has two random stage winners; a winner may win both stages, and stage points count only when added at a reset.</li>
+          <li><strong>Choose each season event when it is ready to start.</strong> Select a catalogue format and use its standard rules or customize its settings. Standard RV seasons may also use a reusable, host-named rank-to-points table.</li>
+          <li><strong>Eurovision adapts to field size.</strong> Up to 30 entrants compete in one final; larger fields use two semi-finals, with the top 13 from each qualifying. Ties compare total points, then 12s, 10s, and so on to 1.</li>
+          <li><strong>Country Choosing uses recognized countries in the current country dataset.</strong> The list is not capped at 197; statistics use the latest World Bank data available.</li>
+          <li><strong>Letter Values uses a bundled CMUdict word list.</strong> The Oxford Dictionary is not bundled; the included open-license word list and license notice are provided in the project.</li>
+          <li><strong>Hosts choose each username, unique color name, and background.</strong> Common CSS color names fill in their standard hex value; hosts may customize the hex or choose a gradient or image.</li>
+        </ol>
+        <p class="rules-note">Sign in to save your active season and archive to your account. Shared points systems are visible to signed-in users and can only be edited by their creator. Supabase must be configured and its schema applied before cloud saving is available.</p>
+        <div class="modal-actions"><button class="button button-primary" type="button" data-close-modal>Got it</button></div>
+      </div>
+    </dialog>
+    <dialog class="modal archive-modal" id="archive-modal">
+      <div class="modal-content">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> SEASON ARCHIVE</div>
+            <h2 id="archive-title">Past season<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <div id="archive-detail"></div>
+        <div class="modal-actions"><button class="button button-outline" type="button" data-close-modal>Close archive</button></div>
+      </div>
+    </dialog>
+    <dialog class="modal rename-modal" id="rename-modal">
+      <form class="modal-content" id="rename-form">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> USER DATABASE</div>
+            <h2>Rename participant<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <label class="form-label" for="rename-username">Username <span>Rename updates current and archived leaderboards in this test run</span></label>
+        <input class="text-input" id="rename-username" maxlength="32" required>
+        <p class="form-error" id="rename-error" role="alert"></p>
+        <div class="modal-actions">
+          <button class="button button-outline" type="button" data-close-modal>Cancel</button>
+          <button class="button button-primary" type="submit">Save username</button>
+        </div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
