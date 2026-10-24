@@ -41,9 +41,19 @@ button { color: inherit; }
 .brand-mark span { color: var(--accent); }
 .brand-name { color: #a4a8a1; font-family: var(--mono); font-size: 9px; line-height: 1.4; letter-spacing: .08em; }
 .topbar-right { display: flex; align-items: center; gap: 13px; }
-.account-control { display: flex; align-items: center; gap: 8px; }
-.account-email { max-width: 180px; overflow: hidden; color: #a4a8a1; font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.account-control { position: relative; display: flex; align-items: center; gap: 8px; }
+.account-menu { position: relative; }
+.account-menu > summary { max-width: 180px; padding: 9px 12px; border: 1px solid #3a3d39; border-radius: 5px; color: var(--text); cursor: pointer; font: 10px var(--mono); list-style: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu > summary::-webkit-details-marker { display: none; }
+.account-menu > summary::after { content: "⌄"; margin-left: 10px; color: var(--accent); }
+.account-menu[open] > summary { border-color: var(--accent); }
+.account-menu-panel { position: absolute; z-index: 6; top: calc(100% + 6px); right: 0; display: grid; width: 180px; padding: 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-raised); box-shadow: 0 12px 30px #0009; }
+.account-menu-panel button { padding: 10px; border: 0; border-radius: 3px; background: transparent; color: var(--text); cursor: pointer; font-size: 10px; text-align: left; }
+.account-menu-panel button:hover { background: #ffffff0c; color: var(--accent); }
 .auth-modal .modal-content { max-width: 480px; }
+.account-settings-modal { width: min(540px, calc(100% - 30px)); }
+.account-settings-heading { margin: 0 0 8px; color: var(--accent); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.account-settings-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--line); }
 .auth-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .auth-actions .button { min-height: 36px; font-size: 10px; }
 .auth-modal .modal-actions { justify-content: flex-end; }
@@ -376,6 +386,8 @@ button { color: inherit; }
   .brand-mark { font-size: 22px; }
   .brand-name { font-size: 8px; }
   .topbar-right { gap: 8px; }
+  .account-menu > summary { max-width: 115px; padding: 8px; font-size: 8px; }
+  .account-menu > summary::after { margin-left: 5px; }
   .mode-tabs { padding-top: 7px; }
   .mode-tab { min-height: 32px; padding: 0 11px; font-size: 8px; }
   .season-picker { gap: 6px; margin-right: 0; font-size: 8px; }

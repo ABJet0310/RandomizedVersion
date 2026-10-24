@@ -64,6 +64,57 @@
     if (error) throw error;
   }
 
+  async function reauthenticate(password) {
+    const session = await getSession();
+    const email = session?.user?.email;
+    if (!email) throw new Error("Your account email could not be loaded. Sign out and sign back in, then try again.");
+    const { error } = await getClient().auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
+  async function updateEmail(email) {
+    const { data, error } = await getClient().auth.updateUser({ email });
+    if (error) throw error;
+    return data.user;
+  }
+
+  async function updateUsername(username) {
+    const session = await getSession();
+    const user = session?.user;
+    if (!user) throw new Error("Sign in before changing your username.");
+    const client = getClient();
+    const { data: profile, error: profileError } = await client
+      .from("rv_host_profiles")
+      .select("username")
+      .eq("user_id", user.id)
+      .single();
+    if (profileError) throw profileError;
+    const { error: updateError } = await client
+      .from("rv_host_profiles")
+      .update({ username })
+      .eq("user_id", user.id)
+      .select("username")
+      .single();
+    if (updateError) {
+      if (updateError.code === "23505") throw new Error("That public username is already in use. Choose another one.");
+      throw updateError;
+    }
+    const { data, error } = await client.auth.updateUser({
+      data: { ...user.user_metadata, username },
+    });
+    if (error) {
+      const { error: rollbackError } = await client
+        .from("rv_host_profiles")
+        .update({ username: profile.username })
+        .eq("user_id", user.id);
+      if (rollbackError) {
+        throw new Error(`The username update could not finish, and the profile rollback failed: ${rollbackError.message}`);
+      }
+      throw error;
+    }
+    return data.user;
+  }
+
   async function getSession() {
     const { data, error } = await getClient().auth.getSession();
     if (error) throw error;
@@ -195,6 +246,9 @@
     signOut,
     sendPasswordReset,
     updatePassword,
+    reauthenticate,
+    updateEmail,
+    updateUsername,
     loadSeasons,
     saveSeason,
     uploadSeasonImages,

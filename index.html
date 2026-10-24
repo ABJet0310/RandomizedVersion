@@ -36,8 +36,14 @@
           </div>
           <button class="icon-button" id="rules-button" aria-label="Read the rules" title="Read the rules">?</button>
           <div class="account-control">
-            <span class="account-email" id="account-email" hidden></span>
             <button class="button button-small button-outline" id="auth-button" type="button">Sign in</button>
+            <details class="account-menu" id="account-menu" hidden>
+              <summary id="account-menu-trigger"><span id="account-username"></span></summary>
+              <div class="account-menu-panel">
+                <button type="button" id="account-settings-button">Account settings</button>
+                <button type="button" id="account-logout">Sign out</button>
+              </div>
+            </details>
           </div>
           <button class="button button-small button-outline" id="new-season-button">＋ <span>New season</span></button>
         </div>
@@ -347,6 +353,52 @@
           <button class="button button-primary" type="submit" id="auth-submit">Sign in</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="modal account-settings-modal" id="account-settings-modal">
+      <div class="modal-content">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> YOUR RV ACCOUNT</div>
+            <h2>Account settings<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <form id="account-profile-form">
+          <h3 class="account-settings-heading">Profile</h3>
+          <label class="form-label" for="account-settings-username">Public username <span>3–32 characters</span></label>
+          <input class="text-input" id="account-settings-username" maxlength="32" minlength="3" autocomplete="username" required>
+          <p class="form-error" id="account-profile-message" role="status" aria-live="polite"></p>
+          <div class="modal-actions">
+            <button class="button button-primary" type="submit" id="account-profile-save">Save username</button>
+          </div>
+        </form>
+        <form id="account-email-form" class="account-settings-section">
+          <h3 class="account-settings-heading">Email address</h3>
+          <label class="form-label" for="account-settings-email">New email</label>
+          <input class="text-input" id="account-settings-email" type="email" maxlength="254" autocomplete="email" required>
+          <label class="form-label" for="account-email-password">Current password</label>
+          <input class="text-input" id="account-email-password" type="password" autocomplete="current-password" required>
+          <p class="setup-format-note">If email confirmation is enabled in Supabase, you’ll need access to the new inbox to complete the change.</p>
+          <p class="form-error" id="account-email-message" role="status" aria-live="polite"></p>
+          <div class="modal-actions">
+            <button class="button button-primary" type="submit" id="account-email-save">Update email</button>
+          </div>
+        </form>
+        <form id="account-password-form" class="account-settings-section">
+          <h3 class="account-settings-heading">Password</h3>
+          <label class="form-label" for="account-password-current">Current password</label>
+          <input class="text-input" id="account-password-current" type="password" autocomplete="current-password" required>
+          <label class="form-label" for="account-password-new">New password <span>at least 8 characters</span></label>
+          <input class="text-input" id="account-password-new" type="password" minlength="8" autocomplete="new-password" required>
+          <label class="form-label" for="account-password-confirm">Confirm new password</label>
+          <input class="text-input" id="account-password-confirm" type="password" minlength="8" autocomplete="new-password" required>
+          <p class="form-error" id="account-password-message" role="status" aria-live="polite"></p>
+          <div class="modal-actions">
+            <button class="button button-primary" type="submit" id="account-password-save">Change password</button>
+          </div>
+        </form>
+      </div>
     </dialog>
 
     <dialog class="modal rules-modal" id="rules-modal">
