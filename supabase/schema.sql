@@ -203,10 +203,53 @@ begin
 end;
 $$;
 
+create or replace function public.rv_sync_host_profile_username()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.raw_user_meta_data ->> 'username' is distinct from old.raw_user_meta_data ->> 'username' then
+    insert into public.rv_host_profiles (user_id, username)
+    values (new.id, btrim(new.raw_user_meta_data ->> 'username'))
+    on conflict (user_id) do update
+      set username = excluded.username;
+
+    update public.rv_point_systems
+    set creator_name = btrim(new.raw_user_meta_data ->> 'username')
+    where creator_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.rv_lookup_auth_email_for_username(p_username text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select users.email::text
+  from auth.users as users
+  join public.rv_host_profiles as profiles on profiles.user_id = users.id
+  where profiles.username_key = lower(btrim(p_username))
+  limit 1;
+$$;
+
+revoke all on function public.rv_lookup_auth_email_for_username(text) from public, anon, authenticated;
+grant execute on function public.rv_lookup_auth_email_for_username(text) to service_role;
+
 drop trigger if exists rv_create_host_profile_after_signup on auth.users;
 create trigger rv_create_host_profile_after_signup
   after insert on auth.users
   for each row execute function public.rv_create_host_profile();
+
+drop trigger if exists rv_sync_host_profile_username_after_update on auth.users;
+create trigger rv_sync_host_profile_username_after_update
+  after update of raw_user_meta_data on auth.users
+  for each row execute function public.rv_sync_host_profile_username();
 
 create or replace function public.rv_set_point_system_creator_name()
 returns trigger

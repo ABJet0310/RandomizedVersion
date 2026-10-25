@@ -41,8 +41,36 @@
     return data;
   }
 
-  async function signIn(email, password) {
-    const { data, error } = await getClient().auth.signInWithPassword({ email, password });
+  async function signIn(identifier, password) {
+    const normalizedIdentifier = identifier.trim();
+    if (!normalizedIdentifier.includes("@")) {
+      const config = window.RV_SUPABASE_CONFIG ?? {};
+      const response = await fetch(`${config.url}/functions/v1/username-login`, {
+        method: "POST",
+        headers: {
+          apikey: config.publishableKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username: normalizedIdentifier, password }),
+      });
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error("Username sign-in returned an invalid response. Try again.");
+      }
+      if (!response.ok) throw new Error(result.error ?? "Invalid username or password.");
+      if (!result.access_token || !result.refresh_token) {
+        throw new Error("Username sign-in returned an incomplete session. Try again.");
+      }
+      const { data, error } = await getClient().auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      });
+      if (error) throw error;
+      return data;
+    }
+    const { data, error } = await getClient().auth.signInWithPassword({ email: normalizedIdentifier, password });
     if (error) throw error;
     return data;
   }
@@ -62,6 +90,23 @@
   async function updatePassword(password) {
     const { error } = await getClient().auth.updateUser({ password });
     if (error) throw error;
+  }
+
+  async function updateUsername(username) {
+    const { data, error } = await getClient().auth.updateUser({ data: { username } });
+    if (error) {
+      if (error.code === "23505" || error.message?.includes("rv_host_profiles_username_key") || error.message?.includes("duplicate key")) {
+        throw new Error("That username is already taken.");
+      }
+      throw error;
+    }
+    return data.user;
+  }
+
+  async function updateEmail(email) {
+    const { data, error } = await getClient().auth.updateUser({ email });
+    if (error) throw error;
+    return data.user;
   }
 
   async function getSession() {
@@ -195,6 +240,8 @@
     signOut,
     sendPasswordReset,
     updatePassword,
+    updateUsername,
+    updateEmail,
     loadSeasons,
     saveSeason,
     uploadSeasonImages,

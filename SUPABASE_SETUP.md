@@ -16,14 +16,25 @@ RV uses Supabase Auth and Postgres to save signed-in hosts' active seasons, arch
    ```
 
 3. In **Authentication → URL Configuration**, set the Site URL to the same GitHub Pages address and add it to the Redirect URLs allowlist. Keep the trailing slash consistent.
-4. In **Authentication → Providers → Email**, enable email/password sign-in and email confirmations. Supabase sends confirmation and password-reset emails using its configured mail service.
-5. Publish the contents of this folder to the configured GitHub Pages repository. Open the deployed `index.html` over HTTPS to test account creation.
+4. In **Authentication → Providers → Email**, enable email/password sign-in. To allow immediate sign-in after signup, disable email confirmations. With confirmations enabled, new accounts must confirm their email first. Supabase also controls whether email changes require confirmation.
+5. Install the Supabase CLI, link this folder to the same project, then deploy the username-login function:
+
+   ```powershell
+   supabase login
+   supabase link --project-ref YOUR_PROJECT_REF
+   supabase functions deploy username-login
+   ```
+
+   The function resolves usernames to email addresses using a database function callable only by the service role, then lets Supabase Auth validate the password. Configure Supabase Auth rate limits for password sign-ins as appropriate. Never expose or add a service-role key to browser files.
+6. Publish the contents of this folder to the configured GitHub Pages repository. Open the deployed `index.html` over HTTPS to test account creation.
 
 The URL and publishable/anon key are public browser configuration and are restricted by row-level security. Never place a Supabase service-role or secret key in browser files or GitHub Pages.
 
 ## 2. Account and saved data behavior
 
-- Anyone may sign up with an email, password, and unique public username. Email confirmation is required before sign-in.
+- Anyone may sign up with an email, password, and unique public username. Whether confirmation is needed before sign-in depends on the project's email-confirmation setting.
+- Signed-in users can change their username, email, and password from **Account**. Username changes update the Supabase Auth metadata and host profile together. Email changes may remain pending until the confirmation step configured by Supabase is completed.
+- Sign in accepts either the account email or public username. Username sign-in requires the deployed `username-login` Edge Function.
 - Forgot-password emails return to the configured site URL. After opening the reset link, choose a new password in the RV dialog.
 - The active season and saved season history are loaded for the signed-in account and saved after season creation and every event.
 - Point systems are shared among signed-in accounts and have globally unique names. Their creator username is shown, and only the creator may change their saved system. Use a different name to publish a modified copy.

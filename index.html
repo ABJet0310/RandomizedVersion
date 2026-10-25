@@ -332,7 +332,7 @@
         <p class="setup-format-note" id="auth-description">Sign in to save your seasons and access the shared points library.</p>
         <label class="form-label" id="auth-username-label" for="auth-username" hidden>Public username</label>
         <input class="text-input" id="auth-username" name="username" autocomplete="username" maxlength="32" minlength="3" hidden>
-        <label class="form-label" for="auth-email">Email</label>
+        <label class="form-label" id="auth-email-label" for="auth-email">Email or username</label>
         <input class="text-input" id="auth-email" name="email" type="email" autocomplete="email" maxlength="254" required>
         <label class="form-label" for="auth-password">Password</label>
         <input class="text-input" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" required>
@@ -347,6 +347,41 @@
           <button class="button button-primary" type="submit" id="auth-submit">Sign in</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="modal account-modal" id="account-modal">
+      <div class="modal-content">
+        <div class="modal-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> YOUR RV ACCOUNT</div>
+            <h2>Account settings<span class="heading-period">.</span></h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        </div>
+        <form class="account-update-form" id="account-username-form">
+          <label class="form-label" for="account-username">Public username</label>
+          <input class="text-input" id="account-username" maxlength="32" minlength="3" required>
+          <p class="form-error account-message" data-account-message role="status" aria-live="polite"></p>
+          <div class="modal-actions"><button class="button button-primary" type="submit">Save username</button></div>
+        </form>
+        <form class="account-update-form" id="account-email-form">
+          <label class="form-label" for="account-current-email">Current email</label>
+          <input class="text-input" id="account-current-email" type="email" readonly>
+          <label class="form-label" for="account-new-email">New email</label>
+          <input class="text-input" id="account-new-email" type="email" maxlength="254" required>
+          <p class="form-error account-message" data-account-message role="status" aria-live="polite"></p>
+          <div class="modal-actions"><button class="button button-outline" type="submit">Change email</button></div>
+        </form>
+        <form class="account-update-form" id="account-password-form">
+          <label class="form-label" for="account-new-password">New password</label>
+          <input class="text-input" id="account-new-password" type="password" autocomplete="new-password" minlength="8" required>
+          <label class="form-label" for="account-confirm-password">Confirm new password</label>
+          <input class="text-input" id="account-confirm-password" type="password" autocomplete="new-password" minlength="8" required>
+          <p class="form-error account-message" data-account-message role="status" aria-live="polite"></p>
+          <div class="modal-actions"><button class="button button-outline" type="submit">Change password</button></div>
+        </form>
+        <div class="modal-actions account-signout"><button class="button button-outline" type="button" id="account-signout">Sign out</button></div>
+      </div>
     </dialog>
 
     <dialog class="modal rules-modal" id="rules-modal">

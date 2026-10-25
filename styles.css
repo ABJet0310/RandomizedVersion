@@ -44,9 +44,15 @@ button { color: inherit; }
 .account-control { display: flex; align-items: center; gap: 8px; }
 .account-email { max-width: 180px; overflow: hidden; color: #a4a8a1; font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 .auth-modal .modal-content { max-width: 480px; }
+.account-modal .modal-content { max-width: 480px; max-height: 88vh; overflow: auto; }
 .auth-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .auth-actions .button { min-height: 36px; font-size: 10px; }
 .auth-modal .modal-actions { justify-content: flex-end; }
+.account-update-form { padding-top: 15px; margin-top: 15px; border-top: 1px solid #30332e; }
+.account-update-form .form-label { display: block; margin: 11px 0 6px; }
+.account-update-form .form-label:first-child { margin-top: 0; }
+.account-message.success { color: #91d773; }
+.account-signout { justify-content: flex-start; padding-top: 15px; margin-top: 15px; border-top: 1px solid #30332e; }
 .mode-tabs { display: flex; gap: 5px; padding: 10px 0 0; border-bottom: 1px solid var(--line); }
 .mode-tab { min-height: 36px; padding: 0 15px; border: 1px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; background: transparent; color: #92978f; cursor: pointer; font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .mode-tab:hover, .mode-tab.is-active { border-color: var(--line); background: var(--surface); color: var(--accent); }
