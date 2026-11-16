@@ -1153,10 +1153,19 @@ function defaultBakeryGood(format, index) {
   };
 }
 
+function readBakeryGoods(container) {
+  if (!container) return [];
+  const rows = container.querySelectorAll(".bakery-item-settings");
+  return [...rows].map((row) => Object.fromEntries(
+    [...row.querySelectorAll("[data-bakery-field]")].map((field) => [field.dataset.bakeryField, field.value])
+  ));
+}
+
 function renderBakerySettings(format, container, count = format.settings[0].standard, goods = []) {
   const countSetting = format.settings[0];
+  const preservedGoods = goods.length ? goods : readBakeryGoods(container);
   const rows = Array.from({ length: count }, (_, index) => {
-    const good = goods[index] ?? defaultBakeryGood(format, index);
+    const good = preservedGoods[index] ?? defaultBakeryGood(format, index);
     const label = bakeryItemLabel(index);
     const fields = [
       { key: "name", label: "NAME", type: "text", value: good.name ?? "", maxLength: 32, placeholder: "Optional name" },
@@ -1190,10 +1199,8 @@ function updateBakerySettingsCount(event) {
     : getEventFormat($("#season-event-choice").value);
   const countSetting = format.settings[0];
   if (!Number.isInteger(count) || count < countSetting.min || count > countSetting.max) return;
-  const container = input.parentElement.parentElement;
-  const goods = [...container.querySelectorAll(".bakery-item-settings")].map((row) =>
-    Object.fromEntries([...row.querySelectorAll("[data-bakery-field]")].map((field) =>
-      [field.dataset.bakeryField, field.value])));
+  const container = input.closest(".standalone-settings") || input.closest(".season-event-settings") || input.parentElement.parentElement;
+  const goods = readBakeryGoods(container);
   const custom = !input.disabled;
   renderBakerySettings(format, container, count, goods);
   setSettingsEnabled(container, custom);
