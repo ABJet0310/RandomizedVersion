@@ -1106,6 +1106,10 @@ function renderResults(event) {
 }
 
 function renderEventSettings(format, container) {
+  if (format.mechanic === "bakery-shop") {
+    renderBakerySettings(format, container);
+    return;
+  }
   container.innerHTML = format.settings.map((setting) => {
     let control;
     if (setting.type === "checkbox") {
@@ -1123,12 +1127,118 @@ function renderEventSettings(format, container) {
   }).join("");
 }
 
+function bakeryItemLabel(index) {
+  return `Item ${String.fromCharCode(65 + index)}`;
+}
+
+function defaultBakeryGood(format, index) {
+  return format.standardGoods[index] ?? {
+    name: "",
+    minimumPrice: 1.5,
+    maximumPrice: 3,
+    minimumQuantity: 0,
+    maximumQuantity: 200,
+  };
+}
+
+function renderBakerySettings(format, container, count = format.settings[0].standard, goods = []) {
+  const countSetting = format.settings[0];
+  const rows = Array.from({ length: count }, (_, index) => {
+    const good = goods[index] ?? defaultBakeryGood(format, index);
+    const label = bakeryItemLabel(index);
+    const fields = [
+      { key: "name", label: "NAME", type: "text", value: good.name ?? "", maxLength: 32, placeholder: "Optional name" },
+      { key: "maximumPrice", label: "MAX PRICE ($)", type: "number", value: good.maximumPrice, min: 0, max: 10000, step: "0.10" },
+      { key: "minimumPrice", label: "MIN PRICE ($)", type: "number", value: good.minimumPrice, min: 0, max: 10000, step: "0.10" },
+      { key: "minimumQuantity", label: "MIN QTY", type: "number", value: good.minimumQuantity, min: 0, max: 10000 },
+      { key: "maximumQuantity", label: "MAX QTY", type: "number", value: good.maximumQuantity, min: 0, max: 10000 },
+    ];
+    return `<fieldset class="bakery-item-settings" aria-label="${label}">
+      <legend>${label}</legend>
+      ${fields.map((field) => `<label class="bakery-item-field">
+        <span>${field.label}</span>
+        <input class="text-input standalone-setting bakery-item-input" data-bakery-field="${field.key}" type="${field.type}" value="${escapeHtml(String(field.value))}"${field.maxLength ? ` maxlength="${field.maxLength}"` : ""}${field.placeholder ? ` placeholder="${field.placeholder}"` : ""}${field.type === "number" ? ` min="${field.min}" max="${field.max}"${field.step ? ` step="${field.step}"` : ""}` : ""}>
+      </label>`).join("")}
+    </fieldset>`;
+  }).join("");
+  container.innerHTML = `
+    <label class="standalone-setting-field bakery-count-field">
+      <span>${escapeHtml(countSetting.label)}</span>
+      <input class="text-input standalone-setting" data-setting="${escapeHtml(countSetting.key)}" type="number" min="${countSetting.min}" max="${countSetting.max}" step="1" value="${count}">
+    </label>
+    <div class="bakery-settings-items">${rows}</div>`;
+}
+
+function updateBakerySettingsCount(event) {
+  const input = event.target.closest('[data-setting="goodCount"]');
+  if (!input || input.disabled) return;
+  const count = Number(input.value);
+  const format = input.closest("#standalone-settings")
+    ? selectedStandaloneEvent
+    : getEventFormat($("#season-event-choice").value);
+  const countSetting = format.settings[0];
+  if (!Number.isInteger(count) || count < countSetting.min || count > countSetting.max) return;
+  const container = input.parentElement.parentElement;
+  const goods = [...container.querySelectorAll(".bakery-item-settings")].map((row) =>
+    Object.fromEntries([...row.querySelectorAll("[data-bakery-field]")].map((field) =>
+      [field.dataset.bakeryField, field.value])));
+  const custom = !input.disabled;
+  renderBakerySettings(format, container, count, goods);
+  setSettingsEnabled(container, custom);
+}
+
 function setSettingsEnabled(container, enabled) {
   container.hidden = !enabled || container.children.length === 0;
   container.querySelectorAll(".standalone-setting").forEach((input) => { input.disabled = !enabled; });
 }
 
 function readEventSettings(format, container, custom) {
+  if (format.mechanic === "bakery-shop") {
+    const countSetting = format.settings[0];
+    const countInput = container.querySelector(`[data-setting="${countSetting.key}"]`);
+    if (!countInput) throw new Error(`Missing the ${countSetting.label} setting control.`);
+    const goodCount = custom ? Number(countInput.value) : countSetting.standard;
+    if (!Number.isInteger(goodCount) || goodCount < countSetting.min || goodCount > countSetting.max) {
+      throw new Error(`${countSetting.label} must be between ${countSetting.min} and ${countSetting.max}.`);
+    }
+
+    const goods = custom
+      ? [...container.querySelectorAll(".bakery-item-settings")].map((row, index) => {
+        const label = bakeryItemLabel(index);
+        const getValue = (key) => row.querySelector(`[data-bakery-field="${key}"]`)?.value;
+        const name = String(getValue("name") ?? "").trim();
+        const minimumPriceValue = getValue("minimumPrice");
+        const maximumPriceValue = getValue("maximumPrice");
+        const minimumQuantityValue = getValue("minimumQuantity");
+        const maximumQuantityValue = getValue("maximumQuantity");
+        if ([minimumPriceValue, maximumPriceValue, minimumQuantityValue, maximumQuantityValue].some((value) => !value?.trim())) {
+          throw new Error(`${label}: enter both price limits and both quantity limits.`);
+        }
+        const minimumPrice = Number(minimumPriceValue);
+        const maximumPrice = Number(maximumPriceValue);
+        const minimumQuantity = Number(minimumQuantityValue);
+        const maximumQuantity = Number(maximumQuantityValue);
+        if (name.length > 32) throw new Error(`${label} name must be 32 characters or fewer.`);
+        if (![minimumPrice, maximumPrice].every(Number.isFinite)
+          || minimumPrice < 0 || maximumPrice > 10000
+          || Math.round(minimumPrice * 100) % 10 !== 0 || Math.round(maximumPrice * 100) % 10 !== 0) {
+          throw new Error(`${label} prices must be from $0.00 to $10,000.00 in $0.10 increments.`);
+        }
+        if (maximumPrice < minimumPrice) throw new Error(`${label} maximum price must be at least its minimum price.`);
+        if (![minimumQuantity, maximumQuantity].every(Number.isInteger)
+          || minimumQuantity < 0 || maximumQuantity > 10000) {
+          throw new Error(`${label} quantities must be whole numbers from 0 to 10,000.`);
+        }
+        if (maximumQuantity < minimumQuantity) {
+          throw new Error(`${label} maximum quantity must be at least its minimum quantity.`);
+        }
+        return { name, minimumPrice, maximumPrice, minimumQuantity, maximumQuantity };
+      })
+      : format.standardGoods.slice(0, goodCount);
+    if (goods.length !== goodCount) throw new Error("Set up every configured good before starting the event.");
+    return { goodCount, goods };
+  }
+
   const settings = {};
   for (const setting of format.settings) {
     const input = container.querySelector(`[data-setting="${setting.key}"]`);
@@ -1534,6 +1644,36 @@ function renderStandaloneResults(results, includeDetails = true, allowSafeMarkup
   </table></div>`;
 }
 
+function formatBakeryMoney(cents) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function renderBakeryResultCard(result, label) {
+  const sales = result.bakerySales ?? [];
+  return `<article class="bakery-result-card">
+    <header class="bakery-participant">
+      <span class="runner-reveal-index">${escapeHtml(label)}</span>
+      <strong>${escapeHtml(result.name)}</strong>
+    </header>
+    <div class="bakery-goods-grid">
+      ${sales.map((sale) => `<section class="bakery-good">
+        <h4>${escapeHtml(sale.name)}</h4>
+        <div class="bakery-price"><span>SALE PRICE</span><strong>${formatBakeryMoney(sale.priceCents)}</strong></div>
+        <div class="bakery-good-bottom">
+          <div><span>QUANTITY SOLD</span><strong>${sale.quantity}</strong></div>
+        </div>
+        <div class="bakery-good-earnings"><span>EARNED</span><strong>${formatBakeryMoney(sale.revenueCents)}</strong></div>
+      </section>`).join("")}
+    </div>
+    <footer class="bakery-total"><span>TOTAL EARNINGS</span><strong>${formatBakeryMoney(result.points)}</strong></footer>
+  </article>`;
+}
+
+function renderBakeryResults(results) {
+  return `<div class="bakery-results">${results.map((result) =>
+    renderBakeryResultCard(result, `PLACE ${String(result.rank).padStart(2, "0")}`)).join("")}</div>`;
+}
+
 function renderEurovisionRoundResults(round) {
   return `<div class="runner-round-results">
     <h4>${escapeHtml(round.label)} results</h4>
@@ -1638,6 +1778,19 @@ function renderStandaloneRunner() {
     } else if (runner.phase === "complete") {
       content = `<div class="bingo-ended-banner">BINGO EVENT ENDED</div>${renderStandaloneResults(runner.results.map((result) => ({ ...result, detail: eventDetailMarkup({ ...result, eventEndCallIndex: runner.endCallIndex }) })), true, true)}`;
     }
+  } else if (runner.format.mechanic === "bakery-shop") {
+    if (runner.phase === "complete") {
+      content = `<h4>Final Bakery Shop results</h4>${renderBakeryResults(runner.results)}`;
+    } else {
+      const result = runner.turnResults[runner.revealedCount - 1];
+      content = `${result
+        ? renderBakeryResultCard(result, `TURN ${String(result.turn).padStart(2, "0")} OF ${runner.results.length}`)
+        : `<p class="runner-progress">Ready for the first baker's turn.</p>`}
+        <p class="runner-progress">${runner.revealedCount} of ${runner.results.length} turns revealed.</p>`;
+      nextLabel = runner.revealedCount < runner.results.length
+        ? `Reveal ${runner.turnResults[runner.revealedCount].name}'s turn`
+        : "Show final results";
+    }
   } else if (runner.phase === "complete") {
     content = `<h4>Final event results</h4>${renderStandaloneResults(runner.results)}`;
   } else {
@@ -1725,11 +1878,20 @@ async function startStandaloneEvent(event) {
         phase: "round-order",
       };
     } else {
-      const revealOrder = ["atomic-fusion", "country-choosing"].includes(event.mechanic)
+      const revealOrder = ["atomic-fusion", "bakery-shop", "country-choosing"].includes(event.mechanic)
         ? [...results].sort((left, right) => left.turn - right.turn)
         : results;
       steps = revealOrder.map((result) => ({ title: result.name, detail: result.detail ?? `${result.points} points` }));
-      standaloneRunner = { type, format: event, settings, results, steps, phase: "reveal", revealedCount: 0 };
+      standaloneRunner = {
+        type,
+        format: event,
+        settings,
+        results,
+        steps,
+        ...(event.mechanic === "bakery-shop" ? { turnResults: revealOrder } : {}),
+        phase: "reveal",
+        revealedCount: 0,
+      };
     }
     renderStandaloneRunner();
   } catch (error) {
@@ -1961,9 +2123,11 @@ document.querySelectorAll('input[name="seasonRulesMode"]').forEach((input) => {
     setSettingsEnabled($("#season-event-settings"), document.querySelector('input[name="seasonRulesMode"]:checked').value === "custom");
   });
 });
+$("#season-event-settings").addEventListener("change", updateBakerySettingsCount);
 $("#standalone-event-form").elements.rulesMode.forEach((input) => {
   input.addEventListener("change", updateStandaloneSettingsAvailability);
 });
+$("#standalone-settings").addEventListener("change", updateBakerySettingsCount);
 $("#standalone-event-form").addEventListener("submit", (event) => {
   event.preventDefault();
   $("#standalone-error").textContent = "";

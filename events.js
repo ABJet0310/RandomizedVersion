@@ -150,6 +150,25 @@ window.RV_EVENT_CATALOG = [
     ],
   },
   {
+    type: "BAKERY SHOP",
+    category: "Turn-based",
+    label: "Bakery Shop",
+    mechanic: "bakery-shop",
+    kind: "color",
+    description: "Take turns running a shop with a host-chosen set of goods, prices, and sales quantities. Highest revenue wins.",
+    standardRules: "Take turns in scoreboard order (standalone events use participant entry order). Each baker sells Bread, Cookies, Cupcakes, Muffins, and Cakes with randomized prices in $0.10 increments and randomized whole-number quantities. Standard price ranges are $1.50–$3.00 for Bread, $2.00–$6.00 for Cookies, $2.00–$6.00 for Cupcakes, $3.00–$5.00 for Muffins, and $20.00–$50.00 for Cakes. Quantity ranges are 0–200 for Bread, Cookies, Cupcakes, and Muffins, and 0–50 for Cakes. Highest total revenue ranks first.",
+    standardGoods: [
+      { name: "", minimumPrice: 1.5, maximumPrice: 3, minimumQuantity: 0, maximumQuantity: 200 },
+      { name: "", minimumPrice: 2, maximumPrice: 6, minimumQuantity: 0, maximumQuantity: 200 },
+      { name: "", minimumPrice: 2, maximumPrice: 6, minimumQuantity: 0, maximumQuantity: 200 },
+      { name: "", minimumPrice: 3, maximumPrice: 5, minimumQuantity: 0, maximumQuantity: 200 },
+      { name: "", minimumPrice: 20, maximumPrice: 50, minimumQuantity: 0, maximumQuantity: 50 },
+    ],
+    settings: [
+      { key: "goodCount", label: "Number of goods", type: "number", min: 1, max: 10, standard: 5 },
+    ],
+  },
+  {
     type: "BOTTOM DROP",
     category: "Round-based",
     label: "Bottom Drop",

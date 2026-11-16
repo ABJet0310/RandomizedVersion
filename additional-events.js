@@ -578,8 +578,66 @@
     return results;
   }
 
+  function bakeryShop(players, settings, scoreboardOrder) {
+    const goods = settings.goods;
+    if (!Array.isArray(goods) || goods.length < 1 || goods.length > 10 || settings.goodCount !== goods.length) {
+      throw new Error("Bakery Shop must have between 1 and 10 configured goods.");
+    }
+    const configuredGoods = goods.map((good, index) => {
+      const itemLabel = `Item ${String.fromCharCode(65 + index)}`;
+      const name = String(good.name ?? "").trim();
+      const minimumPrice = Number(good.minimumPrice);
+      const maximumPrice = Number(good.maximumPrice);
+      const minimumQuantity = Number(good.minimumQuantity);
+      const maximumQuantity = Number(good.maximumQuantity);
+      const minimumPriceCents = Math.round(minimumPrice * 100);
+      const maximumPriceCents = Math.round(maximumPrice * 100);
+      if (name.length > 32) throw new Error(`${itemLabel} name must be 32 characters or fewer.`);
+      if (!Number.isFinite(minimumPrice) || !Number.isFinite(maximumPrice)
+        || minimumPrice < 0 || maximumPrice > 10000 || maximumPrice < minimumPrice
+        || minimumPriceCents % 10 !== 0 || maximumPriceCents % 10 !== 0) {
+        throw new Error(`${itemLabel} prices must be from $0.00 to $10,000.00 in $0.10 increments, with the maximum at least the minimum.`);
+      }
+      if (!Number.isInteger(minimumQuantity) || !Number.isInteger(maximumQuantity)
+        || minimumQuantity < 0 || maximumQuantity > 10000 || maximumQuantity < minimumQuantity) {
+        throw new Error(`${itemLabel} quantities must be whole numbers from 0 to 10,000, with the maximum at least the minimum.`);
+      }
+      return {
+        name: name || itemLabel,
+        minimumPriceCents,
+        maximumPriceCents,
+        minimumQuantity,
+        maximumQuantity,
+      };
+    });
+    const money = (cents) => `$${(cents / 100).toFixed(2)}`;
+
+    return scoreboardOrder(players).map((player, index) => {
+      let totalRevenueCents = 0;
+      const sales = configuredGoods.map((good) => {
+        const priceCents = good.minimumPriceCents
+          + Math.floor(Math.random() * ((good.maximumPriceCents - good.minimumPriceCents) / 10 + 1)) * 10;
+        const quantity = good.minimumQuantity
+          + Math.floor(Math.random() * (good.maximumQuantity - good.minimumQuantity + 1));
+        const revenueCents = priceCents * quantity;
+        totalRevenueCents += revenueCents;
+        return { ...good, priceCents, quantity, revenueCents };
+      });
+
+      return {
+        id: player.id,
+        name: player.username ?? player.name,
+        points: totalRevenueCents,
+        turn: index + 1,
+        bakerySales: sales,
+        detail: `${sales.map((sale) => `${sale.name}: ${money(sale.priceCents)} × ${sale.quantity} = ${money(sale.revenueCents)}`).join(" · ")} · Total revenue: ${money(totalRevenueCents)}`,
+      };
+    });
+  }
+
   async function scoreEvent(players, mechanic, settings, dependencies) {
     const { randomOrder } = dependencies;
+    if (mechanic === "bakery-shop") return bakeryShop(players, settings, dependencies.scoreboardOrder);
     if (mechanic === "letter-values") return letterValues(players, settings, randomOrder);
     if (mechanic === "catching") return catching(players, settings, randomOrder);
     if (mechanic === "survival-arena") return survivalArena(players, settings, randomOrder);
