@@ -476,12 +476,18 @@ async function saveSeasonToCloud(season = state, quiet = false) {
 }
 
 function renderAccountControl() {
-  const button = $("#auth-button");
   const username = authUser?.user_metadata?.username;
+<<<<<<< HEAD
   $("#account-email").textContent = username ?? "";
   $("#account-email").hidden = !authUser;
   button.textContent = authUser ? "Account" : "Sign in";
   button.title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
+=======
+  $("#auth-button").hidden = Boolean(authUser);
+  $("#auth-button").title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
+  $("#account-menu").hidden = !authUser;
+  $("#account-username").textContent = username ?? authUser?.email ?? "Account";
+>>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
 }
 
 function setAuthMode(mode) {
@@ -492,8 +498,13 @@ function setAuthMode(mode) {
   $("#auth-description").textContent = recovering
     ? "Choose a new password for your account."
     : signingUp
+<<<<<<< HEAD
       ? "Create a public host username. If email confirmation is disabled in Supabase, you can sign in immediately."
       : "Sign in with your email or username to access your account.";
+=======
+      ? "Create a public host username and RV account. Email confirmation is disabled; you’ll be signed in after signup."
+      : "Sign in to save your seasons and access the shared points library. Password recovery by email is unavailable until email delivery is configured.";
+>>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
   $("#auth-username-label").hidden = !signingUp;
   $("#auth-username").hidden = !signingUp;
   $("#auth-username").required = signingUp;
@@ -609,6 +620,7 @@ async function submitAuthForm(event) {
     if (authMode === "signup") {
       if (!username || username.length < 3) throw new Error("Choose a public username at least 3 characters long.");
       if (password !== $("#auth-confirm-password").value) throw new Error("The passwords do not match.");
+<<<<<<< HEAD
       const data = await supabaseService.signUp(identifier, password, username);
       if (data.session) {
         $("#auth-modal").close();
@@ -616,6 +628,15 @@ async function submitAuthForm(event) {
       } else {
         setAuthMode("reset-sent");
         $("#auth-message").textContent = "Check your email for a confirmation link before signing in.";
+=======
+      const { session } = await supabaseService.signUp(email, password, username);
+      if (session) {
+        $("#auth-modal").close();
+        showToast("Account created and signed in.");
+      } else {
+        setAuthMode("reset-sent");
+        $("#auth-message").textContent = "Check your email for a confirmation link. You can sign in after confirming your address.";
+>>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
       }
     } else if (authMode === "recovery") {
       if (password !== $("#auth-confirm-password").value) throw new Error("The passwords do not match.");
@@ -2059,6 +2080,7 @@ $("#new-season-button").addEventListener("click", () => {
   seasonSetup.open();
 });
 $("#auth-button").addEventListener("click", async () => {
+<<<<<<< HEAD
   if (!authUser) {
     openAuth();
     return;
@@ -2066,12 +2088,89 @@ $("#auth-button").addEventListener("click", async () => {
   openAccountSettings();
 });
 $("#account-signout").addEventListener("click", async () => {
+=======
+  openAuth();
+});
+$("#account-logout").addEventListener("click", async () => {
+>>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
   try {
     await supabaseService.signOut();
     $("#account-modal").close();
   } catch (error) {
     console.error("Could not sign out of the RV account.", error);
     showToast(`Sign out failed: ${error.message}`, true);
+  }
+});
+$("#account-settings-button").addEventListener("click", () => {
+  $("#account-menu").open = false;
+  $("#account-settings-username").value = authUser?.user_metadata?.username ?? "";
+  $("#account-settings-email").value = authUser?.email ?? "";
+  for (const selector of ["#account-profile-message", "#account-email-message", "#account-password-message"]) {
+    $(selector).textContent = "";
+  }
+  for (const selector of ["#account-email-password", "#account-password-current", "#account-password-new", "#account-password-confirm"]) {
+    $(selector).value = "";
+  }
+  $("#account-settings-modal").showModal();
+});
+$("#account-profile-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = $("#account-profile-save");
+  const username = $("#account-settings-username").value.trim();
+  const message = $("#account-profile-message");
+  message.textContent = "";
+  submit.disabled = true;
+  try {
+    if (username.length < 3 || username.length > 32) throw new Error("Username must be between 3 and 32 characters.");
+    authUser = await supabaseService.updateUsername(username);
+    renderAccountControl();
+    message.textContent = "Username updated.";
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
+$("#account-email-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = $("#account-email-save");
+  const email = $("#account-settings-email").value.trim();
+  const password = $("#account-email-password").value;
+  const message = $("#account-email-message");
+  message.textContent = "";
+  submit.disabled = true;
+  try {
+    await supabaseService.reauthenticate(password);
+    authUser = await supabaseService.updateEmail(email);
+    renderAccountControl();
+    message.textContent = "Email update requested. If confirmation is enabled, confirm the message sent to the new address.";
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
+$("#account-password-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = $("#account-password-save");
+  const currentPassword = $("#account-password-current").value;
+  const newPassword = $("#account-password-new").value;
+  const message = $("#account-password-message");
+  message.textContent = "";
+  submit.disabled = true;
+  try {
+    if (newPassword.length < 8) throw new Error("The new password must be at least 8 characters long.");
+    if (newPassword !== $("#account-password-confirm").value) throw new Error("The new passwords do not match.");
+    await supabaseService.reauthenticate(currentPassword);
+    await supabaseService.updatePassword(newPassword);
+    $("#account-password-current").value = "";
+    $("#account-password-new").value = "";
+    $("#account-password-confirm").value = "";
+    message.textContent = "Password changed.";
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    submit.disabled = false;
   }
 });
 $("#auth-form").addEventListener("submit", submitAuthForm);
@@ -2085,7 +2184,7 @@ $("#auth-forgot-password").addEventListener("click", async () => {
   try {
     await supabaseService.sendPasswordReset(email);
     setAuthMode("reset-sent");
-    $("#auth-message").textContent = "If an account exists for that address, a password reset link is on its way.";
+    $("#auth-message").textContent = "If an account exists for that address, Supabase accepted the reset request. Without an email provider, the reset message may not arrive.";
   } catch (error) {
     $("#auth-message").textContent = error.message;
   }
