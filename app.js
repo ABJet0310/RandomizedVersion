@@ -1,6 +1,7 @@
 const STORAGE_KEY = "rv-season-v1";
 const SCORING_PROFILE_KEY = "rv-standard-scoring-profiles-v1";
 const FINALE_START = 20;
+const ACCOUNT_FEATURES_ENABLED = false;
 const namesForDemo = [
   "Crimson", "Cobalt", "Marigold", "Violet", "Mint", "Coral", "Indigo", "Saffron",
   "Rose Quartz", "Ocean Fade", "Sunset Fade", "Aurora Bloom", "Moss Gradient", "Dusk Blend",
@@ -138,6 +139,10 @@ async function refreshPointSystems() {
 }
 
 async function loadSharedCatalog() {
+  if (!ACCOUNT_FEATURES_ENABLED) {
+    seedLibraries();
+    return;
+  }
   const config = window.RV_SUPABASE_CONFIG ?? {};
   supabaseConfigured = Boolean(config.url && config.publishableKey);
   if (!supabaseConfigured) {
@@ -477,14 +482,21 @@ async function saveSeasonToCloud(season = state, quiet = false) {
 
 function renderAccountControl() {
   const username = authUser?.user_metadata?.username;
-  $("#account-email").textContent = username ?? "";
-  $("#account-email").hidden = !authUser;
-  button.textContent = authUser ? "Account" : "Sign in";
-  button.title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
-  $("#auth-button").hidden = Boolean(authUser);
-  $("#auth-button").title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
-  $("#account-menu").hidden = !authUser;
-  $("#account-username").textContent = username ?? authUser?.email ?? "Account";
+  const accountEmail = $("#account-email");
+  if (accountEmail) {
+    accountEmail.textContent = username ?? "";
+    accountEmail.hidden = !authUser;
+  }
+  const button = $("#auth-button");
+  if (button) {
+    button.textContent = authUser ? "Account" : "Sign in";
+    button.title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
+    button.hidden = Boolean(authUser);
+  }
+  const accountMenu = $("#account-menu");
+  if (accountMenu) accountMenu.hidden = !authUser;
+  const accountUsername = $("#account-username");
+  if (accountUsername) accountUsername.textContent = username ?? authUser?.email ?? "Account";
 }
 
 function setAuthMode(mode) {
@@ -495,10 +507,8 @@ function setAuthMode(mode) {
   $("#auth-description").textContent = recovering
     ? "Choose a new password for your account."
     : signingUp
-      ? "Create a public host username. If email confirmation is disabled in Supabase, you can sign in immediately."
-      : "Sign in with your email or username to access your account.";
       ? "Create a public host username and RV account. Email confirmation is disabled; you’ll be signed in after signup."
-      : "Sign in to save your seasons and access the shared points library. Password recovery by email is unavailable until email delivery is configured.";
+      : "Sign in to save your seasons and access the shared points library.";
   $("#auth-username-label").hidden = !signingUp;
   $("#auth-username").hidden = !signingUp;
   $("#auth-username").required = signingUp;
@@ -571,6 +581,11 @@ async function applyAuthSession(session) {
 }
 
 async function initializeAccount() {
+  if (!ACCOUNT_FEATURES_ENABLED) {
+    supabaseConfigured = false;
+    authUser = null;
+    return;
+  }
   try {
     supabaseConfigured = Boolean(supabaseService.initialize());
     renderAccountControl();
@@ -2058,12 +2073,14 @@ seasonSetup.configure({
   showToast,
 });
 
-supabaseConfigured = Boolean(window.RV_SUPABASE_CONFIG?.url && window.RV_SUPABASE_CONFIG?.publishableKey);
+supabaseConfigured = ACCOUNT_FEATURES_ENABLED
+  && Boolean(window.RV_SUPABASE_CONFIG?.url && window.RV_SUPABASE_CONFIG?.publishableKey);
 if (!supabaseConfigured) seedLibraries();
 state = supabaseConfigured ? emptySeason() : loadSeason();
 render();
 renderUserLibrary();
-loadSharedCatalog();
+updateLibrarySuggestions();
+if (ACCOUNT_FEATURES_ENABLED) loadSharedCatalog();
 renderRosterEditor(20, supabaseConfigured ? Array.from({ length: 20 }, (_, index) => makeRosterEntry(index)) : makeDemoRoster());
 renderEventCatalogue();
 

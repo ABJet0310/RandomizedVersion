@@ -19,7 +19,7 @@
     <script src="event-engine.js"></script>
     <script src="season-setup.js"></script>
     <script src="season-rules.js"></script>
-    <script src="app.js" defer></script>
+    <script src="app.js?v=20261117" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -35,7 +35,7 @@
             <span class="season-status" id="season-status">IN PROGRESS</span>
           </div>
           <button class="icon-button" id="rules-button" aria-label="Read the rules" title="Read the rules">?</button>
-          <div class="account-control">
+          <div class="account-control" hidden>
             <button class="button button-small button-outline" id="auth-button" type="button">Sign in</button>
             <details class="account-menu" id="account-menu" hidden>
               <summary id="account-menu-trigger"><span id="account-username"></span></summary>
@@ -175,7 +175,7 @@
           </div>
         </section>
 
-        <section class="archive-section user-library-section">
+        <section class="archive-section user-library-section" hidden>
           <div class="history-heading">
             <div>
               <div class="eyebrow"><span class="eyebrow-line"></span> RETURNING PLAYERS</div>
@@ -287,7 +287,7 @@
         </select>
         <label class="form-label" for="participant-count">Number of participants <span>20–48 · usernames and color identities are unique in a season</span></label>
         <input class="text-input participant-count-input" type="number" id="participant-count" name="participantCount" min="20" max="48" value="20" required>
-        <p class="library-status" id="library-status" role="status"></p>
+        <p class="library-status" id="library-status" role="status" hidden></p>
         <datalist id="user-library"></datalist>
         <datalist id="color-library"></datalist>
         <div class="roster-editor" id="roster-editor"></div>
