@@ -477,17 +477,14 @@ async function saveSeasonToCloud(season = state, quiet = false) {
 
 function renderAccountControl() {
   const username = authUser?.user_metadata?.username;
-<<<<<<< HEAD
   $("#account-email").textContent = username ?? "";
   $("#account-email").hidden = !authUser;
   button.textContent = authUser ? "Account" : "Sign in";
   button.title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
-=======
   $("#auth-button").hidden = Boolean(authUser);
   $("#auth-button").title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
   $("#account-menu").hidden = !authUser;
   $("#account-username").textContent = username ?? authUser?.email ?? "Account";
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
 }
 
 function setAuthMode(mode) {
@@ -498,13 +495,10 @@ function setAuthMode(mode) {
   $("#auth-description").textContent = recovering
     ? "Choose a new password for your account."
     : signingUp
-<<<<<<< HEAD
       ? "Create a public host username. If email confirmation is disabled in Supabase, you can sign in immediately."
       : "Sign in with your email or username to access your account.";
-=======
       ? "Create a public host username and RV account. Email confirmation is disabled; you’ll be signed in after signup."
       : "Sign in to save your seasons and access the shared points library. Password recovery by email is unavailable until email delivery is configured.";
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
   $("#auth-username-label").hidden = !signingUp;
   $("#auth-username").hidden = !signingUp;
   $("#auth-username").required = signingUp;
@@ -620,7 +614,6 @@ async function submitAuthForm(event) {
     if (authMode === "signup") {
       if (!username || username.length < 3) throw new Error("Choose a public username at least 3 characters long.");
       if (password !== $("#auth-confirm-password").value) throw new Error("The passwords do not match.");
-<<<<<<< HEAD
       const data = await supabaseService.signUp(identifier, password, username);
       if (data.session) {
         $("#auth-modal").close();
@@ -628,7 +621,6 @@ async function submitAuthForm(event) {
       } else {
         setAuthMode("reset-sent");
         $("#auth-message").textContent = "Check your email for a confirmation link before signing in.";
-=======
       const { session } = await supabaseService.signUp(email, password, username);
       if (session) {
         $("#auth-modal").close();
@@ -636,7 +628,6 @@ async function submitAuthForm(event) {
       } else {
         setAuthMode("reset-sent");
         $("#auth-message").textContent = "Check your email for a confirmation link. You can sign in after confirming your address.";
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
       }
     } else if (authMode === "recovery") {
       if (password !== $("#auth-confirm-password").value) throw new Error("The passwords do not match.");
@@ -2080,7 +2071,6 @@ $("#new-season-button").addEventListener("click", () => {
   seasonSetup.open();
 });
 $("#auth-button").addEventListener("click", async () => {
-<<<<<<< HEAD
   if (!authUser) {
     openAuth();
     return;
@@ -2088,11 +2078,9 @@ $("#auth-button").addEventListener("click", async () => {
   openAccountSettings();
 });
 $("#account-signout").addEventListener("click", async () => {
-=======
   openAuth();
 });
 $("#account-logout").addEventListener("click", async () => {
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
   try {
     await supabaseService.signOut();
     $("#account-modal").close();
