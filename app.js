@@ -1,7 +1,7 @@
 const STORAGE_KEY = "rv-season-v1";
 const SCORING_PROFILE_KEY = "rv-standard-scoring-profiles-v1";
 const FINALE_START = 20;
-const ACCOUNT_FEATURES_ENABLED = false;
+const ACCOUNT_FEATURES_ENABLED = true;
 const namesForDemo = [
   "Crimson", "Cobalt", "Marigold", "Violet", "Mint", "Coral", "Indigo", "Saffron",
   "Rose Quartz", "Ocean Fade", "Sunset Fade", "Aurora Bloom", "Moss Gradient", "Dusk Blend",
@@ -482,21 +482,10 @@ async function saveSeasonToCloud(season = state, quiet = false) {
 
 function renderAccountControl() {
   const username = authUser?.user_metadata?.username;
-  const accountEmail = $("#account-email");
-  if (accountEmail) {
-    accountEmail.textContent = username ?? "";
-    accountEmail.hidden = !authUser;
-  }
-  const button = $("#auth-button");
-  if (button) {
-    button.textContent = authUser ? "Account" : "Sign in";
-    button.title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
-    button.hidden = Boolean(authUser);
-  }
-  const accountMenu = $("#account-menu");
-  if (accountMenu) accountMenu.hidden = !authUser;
-  const accountUsername = $("#account-username");
-  if (accountUsername) accountUsername.textContent = username ?? authUser?.email ?? "Account";
+  $("#auth-button").hidden = Boolean(authUser);
+  $("#auth-button").title = supabaseConfigured ? "" : "Configure Supabase to enable accounts";
+  $("#account-menu").hidden = !authUser;
+  $("#account-username").textContent = username ?? authUser?.email ?? "Account";
 }
 
 function setAuthMode(mode) {
@@ -629,14 +618,7 @@ async function submitAuthForm(event) {
     if (authMode === "signup") {
       if (!username || username.length < 3) throw new Error("Choose a public username at least 3 characters long.");
       if (password !== $("#auth-confirm-password").value) throw new Error("The passwords do not match.");
-      const data = await supabaseService.signUp(identifier, password, username);
-      if (data.session) {
-        $("#auth-modal").close();
-        showToast("Your account is ready.");
-      } else {
-        setAuthMode("reset-sent");
-        $("#auth-message").textContent = "Check your email for a confirmation link before signing in.";
-      const { session } = await supabaseService.signUp(email, password, username);
+      const { session } = await supabaseService.signUp(identifier, password, username);
       if (session) {
         $("#auth-modal").close();
         showToast("Account created and signed in.");
@@ -657,64 +639,6 @@ async function submitAuthForm(event) {
     }
   } catch (error) {
     $("#auth-message").textContent = error.message;
-  } finally {
-    submit.disabled = false;
-  }
-}
-
-function openAccountSettings() {
-  if (!authUser) return;
-  $("#account-username").value = authUser.user_metadata?.username ?? "";
-  $("#account-current-email").value = authUser.email ?? "";
-  $("#account-new-email").value = "";
-  $("#account-new-password").value = "";
-  $("#account-confirm-password").value = "";
-  document.querySelectorAll("[data-account-message]").forEach((message) => {
-    message.textContent = "";
-    message.classList.remove("success");
-  });
-  $("#account-modal").showModal();
-}
-
-async function submitAccountUpdate(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const submit = form.querySelector('[type="submit"]');
-  const message = form.querySelector("[data-account-message]");
-  submit.disabled = true;
-  message.textContent = "";
-  message.classList.remove("success");
-  try {
-    if (form.id === "account-username-form") {
-      const username = $("#account-username").value.trim();
-      if (username.length < 3 || username.length > 32) {
-        throw new Error("Username must be between 3 and 32 characters.");
-      }
-      authUser = await supabaseService.updateUsername(username);
-      renderAccountControl();
-      message.textContent = "Username saved.";
-    } else if (form.id === "account-email-form") {
-      const email = $("#account-new-email").value.trim();
-      if (email.toLocaleLowerCase() === authUser.email?.toLocaleLowerCase()) {
-        throw new Error("Enter a different email address.");
-      }
-      await supabaseService.updateEmail(email);
-      $("#account-new-email").value = "";
-      message.textContent = "Email change requested. Check the new address and follow Supabase's confirmation instructions before using it to sign in.";
-    } else {
-      const password = $("#account-new-password").value;
-      if (password.length < 8) throw new Error("Password must be at least 8 characters long.");
-      if (password !== $("#account-confirm-password").value) {
-        throw new Error("The passwords do not match.");
-      }
-      await supabaseService.updatePassword(password);
-      $("#account-new-password").value = "";
-      $("#account-confirm-password").value = "";
-      message.textContent = "Password updated.";
-    }
-    message.classList.add("success");
-  } catch (error) {
-    message.textContent = error.message;
   } finally {
     submit.disabled = false;
   }
@@ -2094,20 +2018,10 @@ $("#new-season-button").addEventListener("click", () => {
   }
   seasonSetup.open();
 });
-$("#auth-button").addEventListener("click", async () => {
-  if (!authUser) {
-    openAuth();
-    return;
-  }
-  openAccountSettings();
-});
-$("#account-signout").addEventListener("click", async () => {
-  openAuth();
-});
+$("#auth-button").addEventListener("click", () => openAuth());
 $("#account-logout").addEventListener("click", async () => {
   try {
     await supabaseService.signOut();
-    $("#account-modal").close();
   } catch (error) {
     console.error("Could not sign out of the RV account.", error);
     showToast(`Sign out failed: ${error.message}`, true);
@@ -2200,9 +2114,6 @@ $("#auth-forgot-password").addEventListener("click", async () => {
   } catch (error) {
     $("#auth-message").textContent = error.message;
   }
-});
-document.querySelectorAll(".account-update-form").forEach((form) => {
-  form.addEventListener("submit", submitAccountUpdate);
 });
 $("#rules-button").addEventListener("click", () => $("#rules-modal").showModal());
 document.querySelectorAll("[data-workspace]").forEach((button) => {

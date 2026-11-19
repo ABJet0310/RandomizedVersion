@@ -92,24 +92,12 @@
     if (error) throw error;
   }
 
-<<<<<<< HEAD
-  async function updateUsername(username) {
-    const { data, error } = await getClient().auth.updateUser({ data: { username } });
-    if (error) {
-      if (error.code === "23505" || error.message?.includes("rv_host_profiles_username_key") || error.message?.includes("duplicate key")) {
-        throw new Error("That username is already taken.");
-      }
-      throw error;
-    }
-    return data.user;
-=======
   async function reauthenticate(password) {
     const session = await getSession();
     const email = session?.user?.email;
     if (!email) throw new Error("Your account email could not be loaded. Sign out and sign back in, then try again.");
     const { error } = await getClient().auth.signInWithPassword({ email, password });
     if (error) throw error;
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
   }
 
   async function updateEmail(email) {
@@ -118,8 +106,6 @@
     return data.user;
   }
 
-<<<<<<< HEAD
-=======
   async function updateUsername(username) {
     const session = await getSession();
     const user = session?.user;
@@ -156,8 +142,6 @@
     }
     return data.user;
   }
-
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
   async function getSession() {
     const { data, error } = await getClient().auth.getSession();
     if (error) throw error;
@@ -289,14 +273,9 @@
     signOut,
     sendPasswordReset,
     updatePassword,
-<<<<<<< HEAD
-    updateUsername,
-    updateEmail,
-=======
     reauthenticate,
     updateEmail,
     updateUsername,
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
     loadSeasons,
     saveSeason,
     uploadSeasonImages,

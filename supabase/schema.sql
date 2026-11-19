@@ -251,6 +251,27 @@ create trigger rv_sync_host_profile_username_after_update
   after update of raw_user_meta_data on auth.users
   for each row execute function public.rv_sync_host_profile_username();
 
+create or replace function public.rv_sync_host_profile_username_to_points()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.username is distinct from old.username then
+    update public.rv_point_systems
+    set creator_name = new.username
+    where creator_id = new.user_id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists rv_sync_host_profile_username_after_update on public.rv_host_profiles;
+create trigger rv_sync_host_profile_username_after_update
+  after update of username on public.rv_host_profiles
+  for each row execute function public.rv_sync_host_profile_username_to_points();
+
 create or replace function public.rv_set_point_system_creator_name()
 returns trigger
 language plpgsql

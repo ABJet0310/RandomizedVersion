@@ -35,7 +35,7 @@
             <span class="season-status" id="season-status">IN PROGRESS</span>
           </div>
           <button class="icon-button" id="rules-button" aria-label="Read the rules" title="Read the rules">?</button>
-          <div class="account-control" hidden>
+          <div class="account-control">
             <button class="button button-small button-outline" id="auth-button" type="button">Sign in</button>
             <details class="account-menu" id="account-menu" hidden>
               <summary id="account-menu-trigger"><span id="account-username"></span></summary>
@@ -355,11 +355,7 @@
       </form>
     </dialog>
 
-<<<<<<< HEAD
-    <dialog class="modal account-modal" id="account-modal">
-=======
     <dialog class="modal account-settings-modal" id="account-settings-modal">
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
       <div class="modal-content">
         <div class="modal-heading">
           <div>
@@ -368,31 +364,6 @@
           </div>
           <button class="icon-button modal-close" type="button" data-close-modal aria-label="Close">×</button>
         </div>
-<<<<<<< HEAD
-        <form class="account-update-form" id="account-username-form">
-          <label class="form-label" for="account-username">Public username</label>
-          <input class="text-input" id="account-username" maxlength="32" minlength="3" required>
-          <p class="form-error account-message" data-account-message role="status" aria-live="polite"></p>
-          <div class="modal-actions"><button class="button button-primary" type="submit">Save username</button></div>
-        </form>
-        <form class="account-update-form" id="account-email-form">
-          <label class="form-label" for="account-current-email">Current email</label>
-          <input class="text-input" id="account-current-email" type="email" readonly>
-          <label class="form-label" for="account-new-email">New email</label>
-          <input class="text-input" id="account-new-email" type="email" maxlength="254" required>
-          <p class="form-error account-message" data-account-message role="status" aria-live="polite"></p>
-          <div class="modal-actions"><button class="button button-outline" type="submit">Change email</button></div>
-        </form>
-        <form class="account-update-form" id="account-password-form">
-          <label class="form-label" for="account-new-password">New password</label>
-          <input class="text-input" id="account-new-password" type="password" autocomplete="new-password" minlength="8" required>
-          <label class="form-label" for="account-confirm-password">Confirm new password</label>
-          <input class="text-input" id="account-confirm-password" type="password" autocomplete="new-password" minlength="8" required>
-          <p class="form-error account-message" data-account-message role="status" aria-live="polite"></p>
-          <div class="modal-actions"><button class="button button-outline" type="submit">Change password</button></div>
-        </form>
-        <div class="modal-actions account-signout"><button class="button button-outline" type="button" id="account-signout">Sign out</button></div>
-=======
         <form id="account-profile-form">
           <h3 class="account-settings-heading">Profile</h3>
           <label class="form-label" for="account-settings-username">Public username <span>3–32 characters</span></label>
@@ -427,7 +398,6 @@
             <button class="button button-primary" type="submit" id="account-password-save">Change password</button>
           </div>
         </form>
->>>>>>> ef9926b7b16368f349669a193b8927390cfac55b
       </div>
     </dialog>
 
