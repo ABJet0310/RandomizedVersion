@@ -966,12 +966,33 @@ function eventRoundsMarkup(rounds, players) {
   const names = new Map(players.map((player) => [player.id, player.username ?? player.name]));
   const catchingRounds = rounds.some((round) => Array.isArray(round.order));
   const parkourRounds = rounds.some((round) => Array.isArray(round.runners));
+  const parkourCourse = rounds.some((round) => round.stage === "bonus" || round.stage === "main" || round.stage === "final");
   const heading = catchingRounds
     ? `${rounds.filter((round) => !round.isTiebreak).length} Catching rounds`
-    : parkourRounds ? `${rounds.length} Parkour rooms` : `${rounds.length} survival phases`;
+    : parkourCourse ? `${rounds.filter((round) => round.stage === "bonus").length} bonus paths, 5 zones and finale`
+      : parkourRounds ? `${rounds.length} Parkour rooms` : `${rounds.length} survival phases`;
   return `<details class="event-round-log">
     <summary>View ${escapeHtml(heading)}</summary>
     ${rounds.map((round) => {
+      if (round.stage === "bonus" || round.stage === "main" || round.stage === "final") {
+        return `<section><h4>${escapeHtml(round.label)}</h4>
+          <ul>${round.participants.map((participant) => {
+            const obstacles = (participant.obstacles ?? (participant.obstacle ? [participant.obstacle] : []))
+              .map((obstacle, index) => {
+                const attemptCount = obstacle.attempts?.length ?? 0;
+                const outcome = obstacle.cleared ?? obstacle.attempts?.some((attempt) => attempt.outcome === "cleared");
+                return `Part ${obstacle.obstacle ?? index + 1}: ${outcome ? "cleared" : "not cleared"} (${attemptCount} attempt${attemptCount === 1 ? "" : "s"})`;
+              }).join(" · ");
+            const detail = [
+              participant.path ? `${participant.path} finale` : participant.difficulty,
+              participant.status,
+              obstacles,
+              participant.medalsAwarded?.length ? `Medals: ${participant.medalsAwarded.join(", ")}` : "",
+              `${participant.coins ?? 0} coins`,
+            ].filter(Boolean).join(" · ");
+            return `<li>${escapeHtml(names.get(participant.id) ?? participant.name)} · ${escapeHtml(detail)}</li>`;
+          }).join("")}</ul></section>`;
+      }
       if (Array.isArray(round.runners)) {
         if (round.room) {
           return `<section><h4>Room ${round.room} · ${escapeHtml(round.route)}</h4>
@@ -1658,7 +1679,30 @@ function formatRunTime(milliseconds) {
   return `${(milliseconds / 1000).toFixed(2)}s`;
 }
 
-function renderParkourRoom(round) {
+function renderParkourStage(round) {
+  if (round.stage) {
+    return `<section class="runner-round-results">
+      <h4>${escapeHtml(round.label)}</h4>
+      <div class="standalone-results-wrap"><table class="results-table">
+        <thead><tr><th>PARTICIPANT</th><th>PROGRESS / RESULT</th><th>OBSTACLES</th><th>COINS</th><th>TIME</th></tr></thead>
+        <tbody>${round.participants.map((participant) => {
+          const obstacles = (participant.obstacles ?? (participant.obstacle ? [participant.obstacle] : []))
+            .map((obstacle, index) => {
+              const attemptCount = obstacle.attempts?.length ?? 0;
+              const cleared = obstacle.cleared ?? obstacle.attempts?.some((attempt) => attempt.outcome === "cleared");
+              return `Part ${obstacle.obstacle ?? index + 1}: ${cleared ? "cleared" : "not cleared"} (${attemptCount} attempt${attemptCount === 1 ? "" : "s"})`;
+            }).join("<br>");
+          const progress = [
+            participant.path ? `${participant.path} finale` : participant.difficulty,
+            participant.part ? `Part ${participant.part}` : "",
+            participant.status,
+            participant.medalsAwarded?.length ? `Medals: ${participant.medalsAwarded.join(", ")}` : "",
+          ].filter(Boolean).join(" · ");
+          return `<tr><th scope="row">${escapeHtml(participant.name)}</th><td>${escapeHtml(progress)}</td><td>${obstacles || "—"}</td><td>${participant.coins ?? 0}</td><td>${formatRunTime(participant.elapsed ?? 0)}</td></tr>`;
+        }).join("")}</tbody>
+      </table></div>
+    </section>`;
+  }
   return `<section class="runner-round-results">
     <h4>Room ${round.room} · ${escapeHtml(round.route)}</h4>
     <div class="standalone-results-wrap"><table class="results-table">
@@ -1684,14 +1728,14 @@ function renderStandaloneRunner() {
   if (runner.type === "parkour-rush") {
     if (runner.phase === "ready") {
       content = `<section class="runner-round-results"><h4>Course ready</h4>
-        <p>${runner.settings.rooms} rooms · ${runner.settings.jumpsPerRoom} jumps on the balanced route. The same randomized route is used for the whole field in each room. Setbacks add time; nobody is eliminated, and everyone finishes.</p></section>`;
+        <p>Five main zones of three obstacles, each preceded by an optional three-obstacle medal path. Only main-course obstacles earn 2 base coins; bonus paths award medals, which convert to coins at the end. Bonus paths allow three attempts per obstacle before teleporting back. Finale obstacles have one attempt, with slightly better odds than their matching bonus difficulty. On a failure, contestants can teleport to any easier finale and restart the path until the final 30 seconds of the normal time limit. Contestants in the finale at the deadline get up to one minute of overtime, but any overtime failure ends the run. The finale awards no coins: clearing every part earns an additional multiplier on top of 1.00×. Time limit: ${runner.settings.timeLimitMinutes} minutes.</p></section>`;
       nextLabel = "Start Parkour Warrior";
     } else if (runner.phase === "complete") {
       content = `<h4>Final Parkour Warrior results</h4>${renderStandaloneResults(runner.results)}`;
     } else {
-      content = renderParkourRoom(runner.eventRounds[runner.roundIndex]);
+      content = renderParkourStage(runner.eventRounds[runner.roundIndex]);
       nextLabel = runner.roundIndex + 1 < runner.eventRounds.length
-        ? `Reveal Room ${runner.eventRounds[runner.roundIndex + 1].room}`
+        ? `Reveal ${runner.eventRounds[runner.roundIndex + 1].label ?? `Room ${runner.eventRounds[runner.roundIndex + 1].room}`}`
         : "Show final results";
     }
   } else if (runner.type === "eurovision") {

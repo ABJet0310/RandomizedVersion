@@ -318,73 +318,288 @@
   }
 
   function parkourRush(players, settings) {
-    const rooms = Number(settings.rooms ?? 12);
-    const jumpsPerRoom = Number(settings.jumpsPerRoom ?? 4);
-    if (!Number.isInteger(rooms) || rooms < 4 || rooms > 20) {
-      throw new Error("Parkour Warrior must have between 4 and 20 rooms.");
+    const timeLimitMinutes = Number(settings.timeLimitMinutes ?? 10);
+    const bonusEntryChance = Number(settings.bonusEntryChance ?? 85);
+    if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 1 || timeLimitMinutes > 30) {
+      throw new Error("Parkour Warrior's time limit must be between 1 and 30 minutes.");
     }
-    if (!Number.isInteger(jumpsPerRoom) || jumpsPerRoom < 2 || jumpsPerRoom > 8) {
-      throw new Error("The balanced route must have between 2 and 8 jumps per room.");
+    if (!Number.isInteger(bonusEntryChance) || bonusEntryChance < 0 || bonusEntryChance > 100) {
+      throw new Error("Bonus path entry chance must be between 0% and 100%.");
     }
 
-    const routes = [
-      { name: "Scenic route", jumps: jumpsPerRoom + 1, successPercent: 90, jumpTime: 2400, retryPenalty: 400 },
-      { name: "Balanced route", jumps: jumpsPerRoom, successPercent: 70, jumpTime: 1800, retryPenalty: 800 },
-      { name: "Shortcut", jumps: jumpsPerRoom - 1, successPercent: 45, jumpTime: 900, retryPenalty: 1400 },
+    const timeLimit = timeLimitMinutes * 60_000;
+    const finaleOvertimeLimit = timeLimit + 60_000;
+    const bonusPaths = [
+      { difficulty: "Very Easy", successPercent: 98 },
+      { difficulty: "Easy", successPercent: 92 },
+      { difficulty: "Medium", successPercent: 82 },
+      { difficulty: "Medium", successPercent: 82 },
+      { difficulty: "Hard", successPercent: 65 },
     ];
+    const mainZoneSuccess = [96, 93, 90, 87, 84];
+    const finalePaths = [
+      { name: "Easy", parts: 3, successPercent: 97, multiplier: 0.15 },
+      { name: "Medium", parts: 2, successPercent: 87, multiplier: 0.35 },
+      { name: "Hard", parts: 2, successPercent: 70, multiplier: 0.8 },
+    ];
+    const bonusCoinSchedule = {
+      bronze: [0, 5, 15, 25, 40, 60],
+      silver: [0, 10, 25, 45, 70, 100],
+      gold: [0, 15, 30, 55, 90, 140],
+    };
     const runs = new Map(players.map((player) => [player.id, {
-      totalTime: 0,
-      totalSetbacks: 0,
-      roomsCompleted: 0,
+      elapsed: 0,
+      coins: 0,
+      medals: { bronze: 0, silver: 0, gold: 0 },
+      mainParts: 0,
+      totalFailures: 0,
+      timedOut: false,
+      finalPath: null,
+      finalParts: 0,
+      finalFailed: false,
+      overtimeUsed: false,
     }]));
     const eventRounds = [];
 
-    for (let room = 1; room <= rooms; room += 1) {
-      const route = randomOrder(routes)[0];
-      const runners = players.map((player) => {
-        const run = runs.get(player.id);
-        const jumps = [];
-        let roomTime = 0;
-        for (let jump = 1; jump <= route.jumps; jump += 1) {
-          let setbacks = 0;
-          while (Math.random() * 100 >= route.successPercent && setbacks < 100) setbacks += 1;
-          const jumpTime = route.jumpTime + Math.floor(Math.random() * 801) + setbacks * route.retryPenalty;
-          roomTime += jumpTime;
-          jumps.push({ jump, setbacks, time: jumpTime });
-          run.totalSetbacks += setbacks;
+    function attemptObstacle(run, successPercent, maximumFailures = Infinity, awardCoins = true, attemptTimeLimit = timeLimit) {
+      let failures = 0;
+      const attempts = [];
+      while (!run.timedOut && failures <= maximumFailures) {
+        const duration = 8_000 + Math.floor(Math.random() * 10_001);
+        if (run.elapsed + duration > attemptTimeLimit) {
+          const remaining = attemptTimeLimit - run.elapsed;
+          run.elapsed = attemptTimeLimit;
+          run.timedOut = true;
+          attempts.push({ outcome: "time", duration: remaining });
+          break;
         }
-        run.totalTime += roomTime;
-        run.roomsCompleted += 1;
-        return {
+        run.elapsed += duration;
+        const cleared = Math.random() * 100 < successPercent;
+        attempts.push({ outcome: cleared ? "cleared" : "failed", duration });
+        if (cleared) {
+          if (awardCoins) run.coins += 2;
+          return { cleared: true, attempts, failures };
+        }
+        failures += 1;
+        run.totalFailures += 1;
+      }
+      return { cleared: false, attempts, failures };
+    }
+
+    function pushStage(stage, number, label, participants, extra = {}) {
+      eventRounds.push({ stage, number, label, participants, ...extra });
+    }
+
+    function runMainZone(zone) {
+      const participants = players.map((player) => {
+        const run = runs.get(player.id);
+        const record = {
           id: player.id,
           name: player.username ?? player.name,
-          route: route.name,
-          jumps,
-          roomTime,
-          totalTime: run.totalTime,
-          roomsCompleted: run.roomsCompleted,
+          completedParts: 0,
+          obstacles: [],
+          elapsed: run.elapsed,
+          coins: run.coins,
+          timedOut: run.timedOut,
         };
+        if (run.timedOut) {
+          record.status = "Time expired";
+          return record;
+        }
+        record.status = "Zone cleared";
+        for (let obstacle = 1; obstacle <= 3; obstacle += 1) {
+          const outcome = attemptObstacle(run, mainZoneSuccess[zone - 1]);
+          record.obstacles.push({ obstacle, ...outcome });
+          if (!outcome.cleared) {
+            record.status = "Time expired";
+            break;
+          }
+          record.completedParts += 1;
+          run.mainParts += 1;
+        }
+        record.elapsed = run.elapsed;
+        record.coins = run.coins;
+        record.timedOut = run.timedOut;
+        record.coinsEarned = record.completedParts * 2;
+        return record;
       });
-      eventRounds.push({
-        room,
-        route: route.name,
-        successPercent: route.successPercent,
-        runners,
+      pushStage("main", zone, `Main Zone ${zone}`, participants, {
+        successPercent: mainZoneSuccess[zone - 1],
       });
     }
 
-    const formatTime = (milliseconds) => {
-      const seconds = (milliseconds / 1000).toFixed(2);
-      return `${seconds}s`;
-    };
+    for (let index = 0; index < bonusPaths.length; index += 1) {
+      const path = bonusPaths[index];
+      const participants = players.map((player) => {
+        const run = runs.get(player.id);
+        const record = {
+          id: player.id,
+          name: player.username ?? player.name,
+          difficulty: path.difficulty,
+          entered: false,
+          completedParts: 0,
+          medalsAwarded: [],
+          obstacles: [],
+          elapsed: run.elapsed,
+          coins: run.coins,
+          timedOut: run.timedOut,
+        };
+        if (run.timedOut) return record;
+        if (Math.random() * 100 >= bonusEntryChance) {
+          record.status = "Skipped bonus path";
+          return record;
+        }
+        record.entered = true;
+        record.status = "Completed bonus path";
+        const medalForPart = ["bronze", "silver", "gold"];
+        for (let obstacle = 1; obstacle <= 3; obstacle += 1) {
+          const outcome = attemptObstacle(run, path.successPercent, 2, false);
+          record.obstacles.push({ obstacle, ...outcome });
+          if (outcome.cleared) {
+            record.completedParts += 1;
+            const medal = medalForPart[obstacle - 1];
+            run.medals[medal] += 1;
+            record.medalsAwarded.push(medal);
+            continue;
+          }
+          if (run.timedOut) {
+            record.status = "Time expired on bonus path";
+          } else {
+            record.status = "Teleported back after three failed attempts";
+            record.teleported = true;
+          }
+          break;
+        }
+        record.elapsed = run.elapsed;
+        record.coins = run.coins;
+        record.timedOut = run.timedOut;
+        return record;
+      });
+      pushStage("bonus", index + 1, `Bonus Path ${index + 1} · ${path.difficulty}`, participants, {
+        difficulty: path.difficulty,
+      });
+      runMainZone(index + 1);
+    }
+
+    const finalRecordsById = new Map(players.map((player) => [player.id, []]));
+    for (const player of players) {
+      const run = runs.get(player.id);
+      const finalRecords = finalRecordsById.get(player.id);
+      if (run.timedOut || run.mainParts !== 15) {
+        finalRecords.push({
+          id: player.id,
+          name: player.username ?? player.name,
+          path: null,
+          part: null,
+          completedParts: 0,
+          elapsed: run.elapsed,
+          coins: run.coins,
+          timedOut: run.timedOut,
+          status: "Did not reach finale",
+        });
+        continue;
+      }
+
+      let path = randomOrder(finalePaths)[0];
+      run.finalPath = path;
+      while (!run.timedOut && !run.finalFailed && path) {
+        let restartOnEasierPath = false;
+        for (let part = 1; part <= path.parts; part += 1) {
+          const outcome = attemptObstacle(run, path.successPercent, 0, false, finaleOvertimeLimit);
+          run.overtimeUsed = run.elapsed > timeLimit;
+          const record = {
+            id: player.id,
+            name: player.username ?? player.name,
+            path: path.name,
+            part,
+            attempt: finalRecords.length + 1,
+            completedParts: run.finalParts,
+            obstacle: { obstacle: part, ...outcome },
+            elapsed: run.elapsed,
+            coins: run.coins,
+            timedOut: run.timedOut,
+            overtime: run.elapsed > timeLimit,
+          };
+          if (outcome.cleared) {
+            run.finalParts += 1;
+            record.completedParts = run.finalParts;
+            record.pathComplete = run.finalParts === path.parts;
+            record.status = record.pathComplete ? "Finale complete · multiplier qualified" : "Part cleared · no coins";
+            finalRecords.push(record);
+            if (record.pathComplete) break;
+            continue;
+          }
+
+          const easierPaths = finalePaths.slice(0, finalePaths.indexOf(path));
+          const downgradeAllowed = !run.timedOut && run.elapsed < timeLimit - 30_000;
+          if (downgradeAllowed && easierPaths.length) {
+            const easierPath = randomOrder(easierPaths)[0];
+            record.downgradedTo = easierPath.name;
+            record.status = `Failed · teleported to ${easierPath.name} and restarted`;
+            run.finalPath = easierPath;
+            run.finalParts = 0;
+            path = easierPath;
+            restartOnEasierPath = true;
+          } else {
+            run.finalFailed = true;
+            record.status = run.timedOut
+              ? "Overtime limit reached · incomplete"
+              : run.elapsed > timeLimit
+                ? "Overtime failure · incomplete"
+                : run.elapsed >= timeLimit - 30_000
+                  ? "Failed in final 30 seconds · incomplete"
+                  : "Easiest finale path failed · incomplete";
+          }
+          finalRecords.push(record);
+          break;
+        }
+        if (!restartOnEasierPath) break;
+      }
+    }
+
+    const finalAttemptCount = Math.max(0, ...[...finalRecordsById.values()].map((records) => records.length));
+    for (let attempt = 0; attempt < finalAttemptCount; attempt += 1) {
+      const participants = players.flatMap((player) => {
+        const record = finalRecordsById.get(player.id)[attempt];
+        return record ? [record] : [];
+      });
+      pushStage("final", attempt + 1, `Finale · Attempt ${attempt + 1}`, participants);
+    }
+
+    const formatTime = (milliseconds) => `${(milliseconds / 1000).toFixed(2)}s`;
     const results = players.map((player) => {
       const run = runs.get(player.id);
+      const medalBonus = Object.entries(bonusCoinSchedule)
+        .reduce((sum, [medal, schedule]) => sum + schedule[run.medals[medal]], 0);
+      const multiplierQualified = Boolean(run.finalPath && run.finalParts === run.finalPath.parts);
+      const multiplier = multiplierQualified ? 1 + run.finalPath.multiplier : 1;
+      const coins = Math.round((run.coins + medalBonus) * multiplier);
+      const finaleStatus = run.finalPath
+        ? multiplierQualified ? `${run.finalPath.name} finale complete` : `${run.finalPath.name} finale incomplete · no multiplier`
+        : "No finale multiplier";
       return {
         id: player.id,
         name: player.username ?? player.name,
-        points: -run.totalTime,
-        detail: `${formatTime(run.totalTime)} total · ${rooms} rooms · ${run.totalSetbacks} failed jumps`,
-        parkourTime: run.totalTime,
+        points: coins,
+        detail: `${coins} coins · ${run.coins} main-course coins + ${medalBonus} medal-conversion coins · ${multiplier.toFixed(2)}× · ${finaleStatus}${run.overtimeUsed ? " · overtime used" : run.timedOut ? " · time expired" : ` · ${formatTime(run.elapsed)}`}`,
+        eventTiebreakScore: [-run.elapsed],
+        eventTiebreakLabels: ["Faster course time"],
+        eventTiebreakDisplay: [formatTime(run.elapsed)],
+        parkour: {
+          elapsed: run.elapsed,
+          timedOut: run.timedOut,
+          coins: run.coins,
+          medalBonus,
+          medals: run.medals,
+          multiplier,
+          multiplierQualified,
+          finalPath: run.finalPath?.name ?? null,
+          finalParts: run.finalParts,
+          finalFailed: run.finalFailed,
+          overtimeUsed: run.overtimeUsed,
+          mainParts: run.mainParts,
+          totalFailures: run.totalFailures,
+        },
       };
     });
     results.eventRounds = eventRounds;
