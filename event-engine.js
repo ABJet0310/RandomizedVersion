@@ -317,6 +317,110 @@
     });
   }
 
+  function parkourRush(players, settings) {
+    const zones = Number(settings.zones ?? 4);
+    const obstaclesPerZone = Number(settings.obstaclesPerZone ?? 3);
+    const startingLives = Number(settings.startingLives ?? 3);
+    if (!Number.isInteger(zones) || zones < 2 || zones > 8) {
+      throw new Error("Parkour Rush must have between 2 and 8 zones.");
+    }
+    if (!Number.isInteger(obstaclesPerZone) || obstaclesPerZone < 1 || obstaclesPerZone > 8) {
+      throw new Error("Each Parkour Rush zone must have between 1 and 8 obstacles.");
+    }
+    if (!Number.isInteger(startingLives) || startingLives < 1 || startingLives > 10) {
+      throw new Error("Parkour Rush contestants must start with between 1 and 10 lives.");
+    }
+
+    const runs = new Map(players.map((player) => [player.id, {
+      checkpoints: 0,
+      lives: startingLives,
+      falls: 0,
+      progress: 0,
+      finished: false,
+    }]));
+    const eventRounds = [];
+
+    for (let zoneIndex = 0; zoneIndex < zones; zoneIndex += 1) {
+      const contestants = players.filter((player) => !runs.get(player.id).finished);
+      if (!contestants.length) break;
+      const successPercent = Math.round(90 - (45 * zoneIndex) / (zones - 1));
+      const zoneResults = contestants.map((player) => {
+        const run = runs.get(player.id);
+        const attempts = [];
+        let progress = 0;
+        let furthestProgress = 0;
+        let cleared = false;
+
+        while (run.lives > 0 && !cleared) {
+          const outcomes = [];
+          for (let obstacleIndex = 0; obstacleIndex < obstaclesPerZone; obstacleIndex += 1) {
+            const obstacleCleared = Math.random() * 100 < successPercent;
+            outcomes.push({ obstacle: obstacleIndex + 1, cleared: obstacleCleared });
+            if (obstacleCleared) {
+              progress += 1;
+              furthestProgress = Math.max(furthestProgress, progress);
+              continue;
+            }
+            run.lives -= 1;
+            run.falls += 1;
+            attempts.push({ outcomes });
+            progress = 0;
+            break;
+          }
+          if (progress === obstaclesPerZone) {
+            cleared = true;
+            attempts.push({ outcomes });
+          }
+        }
+
+        if (cleared) {
+          run.checkpoints += 1;
+          run.progress = 0;
+          if (run.checkpoints === zones) run.finished = true;
+        } else {
+          run.progress = furthestProgress;
+          if (run.lives === 0) run.finished = true;
+        }
+        return {
+          id: player.id,
+          name: player.username ?? player.name,
+          attempts,
+          cleared,
+          checkpoints: run.checkpoints,
+          progress: run.progress,
+          lives: run.lives,
+          falls: run.falls,
+          outOfLives: run.lives === 0,
+        };
+      });
+      eventRounds.push({
+        zone: zoneIndex + 1,
+        successPercent,
+        obstacleCount: obstaclesPerZone,
+        runners: zoneResults,
+      });
+    }
+
+    const results = players.map((player) => {
+      const run = runs.get(player.id);
+      const performance = run.checkpoints * (obstaclesPerZone + 1) + run.progress;
+      const detail = run.checkpoints === zones
+        ? `Course cleared · ${run.lives} ${run.lives === 1 ? "life" : "lives"} remaining · ${run.falls} ${run.falls === 1 ? "fall" : "falls"}`
+        : `Checkpoint ${run.checkpoints} · ${run.progress}/${obstaclesPerZone} obstacles into Zone ${run.checkpoints + 1} · ${run.lives} ${run.lives === 1 ? "life" : "lives"} remaining · ${run.falls} ${run.falls === 1 ? "fall" : "falls"}`;
+      return {
+        id: player.id,
+        name: player.username ?? player.name,
+        points: performance,
+        eventTiebreakScore: [run.lives],
+        eventTiebreakLabels: ["Lives remaining"],
+        eventTiebreakDisplay: [`${run.lives} remaining`],
+        detail,
+      };
+    });
+    results.eventRounds = eventRounds;
+    return results;
+  }
+
   async function scoreEvent(players, mechanic, settings, dependencies) {
     if (mechanic === "random-ranking") return randomRanking(players);
     if (mechanic === "atomic-fusion") return atomicFusion(players, settings, dependencies.scoreboardOrder);
@@ -326,6 +430,7 @@
     if (mechanic === "bottom-drop") return bottomDrop(players, settings);
     if (mechanic === "bingo") return bingo(players, settings);
     if (mechanic === "eurovision") return eurovision(players, settings);
+    if (mechanic === "parkour-rush") return parkourRush(players, settings);
     return window.RV_ADDITIONAL_EVENTS.scoreEvent(players, mechanic, settings, {
       ...dependencies,
       randomOrder,

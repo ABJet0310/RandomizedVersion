@@ -965,12 +965,24 @@ function eventRoundsMarkup(rounds, players) {
   if (!rounds?.length) return "";
   const names = new Map(players.map((player) => [player.id, player.username ?? player.name]));
   const catchingRounds = rounds.some((round) => Array.isArray(round.order));
+  const parkourRounds = rounds.some((round) => Array.isArray(round.runners));
   const heading = catchingRounds
     ? `${rounds.filter((round) => !round.isTiebreak).length} Catching rounds`
-    : `${rounds.length} survival phases`;
+    : parkourRounds ? `${rounds.length} Parkour zones` : `${rounds.length} survival phases`;
   return `<details class="event-round-log">
     <summary>View ${escapeHtml(heading)}</summary>
     ${rounds.map((round) => {
+      if (Array.isArray(round.runners)) {
+        return `<section><h4>Zone ${round.zone} · ${round.successPercent}% obstacle success chance</h4>
+          <ul>${round.runners.map((runner) => {
+            const attempts = runner.attempts.map((attempt, index) =>
+              `Attempt ${index + 1}: ${attempt.outcomes.map((outcome) => outcome.cleared ? "cleared" : `fell at obstacle ${outcome.obstacle}`).join(", ")}`).join(" · ");
+            const status = runner.cleared
+              ? `Checkpoint ${runner.checkpoints} reached`
+              : `${runner.progress}/${round.obstacleCount} obstacles into the zone${runner.outOfLives ? " · out of lives" : ""}`;
+            return `<li>${escapeHtml(names.get(runner.id) ?? runner.name)} · ${escapeHtml(status)} · ${runner.lives} lives left · ${escapeHtml(attempts)}</li>`;
+          }).join("")}</ul></section>`;
+      }
       if (Array.isArray(round.order)) {
         const outcomes = Object.entries(round.caughtBy ?? {}).map(([id, count]) =>
           `${escapeHtml(names.get(id) ?? id)} caught ${count}`).join(" · ");
@@ -1642,6 +1654,23 @@ function renderEurovisionRoundResults(round) {
   </div>`;
 }
 
+function renderParkourZone(round) {
+  return `<section class="runner-round-results">
+    <h4>Zone ${round.zone} · ${round.successPercent}% obstacle success chance</h4>
+    <div class="standalone-results-wrap"><table class="results-table">
+      <thead><tr><th>PARTICIPANT</th><th>ATTEMPTS</th><th>ZONE RESULT</th><th>LIVES</th></tr></thead>
+      <tbody>${round.runners.map((runner) => {
+        const attempts = runner.attempts.map((attempt, index) =>
+          `Attempt ${index + 1}: ${attempt.outcomes.map((outcome) => outcome.cleared ? "CLEAR" : `FALL at obstacle ${outcome.obstacle}`).join(", ")}`).join(" · ");
+        const result = runner.cleared
+          ? `Checkpoint ${runner.checkpoints} reached`
+          : `${runner.progress}/${round.obstacleCount} obstacles${runner.outOfLives ? " · run ended" : " · checkpoint reset"}`;
+        return `<tr><th scope="row">${escapeHtml(runner.name)}</th><td>${escapeHtml(attempts)}</td><td>${escapeHtml(result)}</td><td>${runner.lives}</td></tr>`;
+      }).join("")}</tbody>
+    </table></div>
+  </section>`;
+}
+
 function renderStandaloneRunner() {
   const runner = standaloneRunner;
   const panel = $("#standalone-runner");
@@ -1652,7 +1681,20 @@ function renderStandaloneRunner() {
   panel.hidden = false;
   let content = "";
   let nextLabel = "";
-  if (runner.type === "eurovision") {
+  if (runner.type === "parkour-rush") {
+    if (runner.phase === "ready") {
+      content = `<section class="runner-round-results"><h4>Course ready</h4>
+        <p>${runner.settings.zones} zones · ${runner.settings.obstaclesPerZone} obstacles per zone · ${runner.settings.startingLives} lives per contestant. Clear a zone to activate its checkpoint; a fall costs a life and restarts that zone.</p></section>`;
+      nextLabel = "Start Parkour Rush";
+    } else if (runner.phase === "complete") {
+      content = `<h4>Final Parkour Rush results</h4>${renderStandaloneResults(runner.results)}`;
+    } else {
+      content = renderParkourZone(runner.eventRounds[runner.roundIndex]);
+      nextLabel = runner.roundIndex + 1 < runner.eventRounds.length
+        ? `Reveal Zone ${runner.eventRounds[runner.roundIndex + 1].zone}`
+        : "Show final results";
+    }
+  } else if (runner.type === "eurovision") {
     const round = runner.finalRound ?? runner.rounds[runner.roundIndex];
     if (runner.phase === "draw" || runner.phase === "final-draw") {
       const rounds = runner.phase === "draw" ? runner.rounds : [runner.finalRound];
@@ -1798,7 +1840,18 @@ async function startStandaloneEvent(event) {
     const results = rankResults(eventResults);
     let steps;
     let type = "standard";
-    if (event.mechanic === "bottom-drop") {
+    if (event.mechanic === "parkour-rush") {
+      type = "parkour-rush";
+      standaloneRunner = {
+        type,
+        format: event,
+        settings,
+        results,
+        eventRounds: eventResults.eventRounds,
+        roundIndex: 0,
+        phase: "ready",
+      };
+    } else if (event.mechanic === "bottom-drop") {
       type = "bottom-drop";
       standaloneRunner = {
         type,
@@ -1863,6 +1916,17 @@ async function startStandaloneEvent(event) {
 function advanceStandaloneEvent() {
   const runner = standaloneRunner;
   if (!runner) return;
+  if (runner.type === "parkour-rush") {
+    if (runner.phase === "ready") {
+      runner.phase = runner.eventRounds.length ? "zone" : "complete";
+    } else if (runner.roundIndex + 1 < runner.eventRounds.length) {
+      runner.roundIndex += 1;
+    } else {
+      runner.phase = "complete";
+    }
+    renderStandaloneRunner();
+    return;
+  }
   if (runner.type === "random-ranking") {
     if (runner.phase === "turn-order") {
       runner.phase = "rank";

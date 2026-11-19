@@ -222,6 +222,20 @@ window.RV_EVENT_CATALOG = [
     ],
   },
   {
+    type: "PARKOUR RUSH",
+    category: "Round-based",
+    label: "Parkour Rush",
+    mechanic: "parkour-rush",
+    kind: "color",
+    description: "Contestants face a randomized checkpoint course where every jump is decided by chance.",
+    standardRules: "Run through four zones of three obstacles each. Every contestant has three lives. Each obstacle is independently randomized, with the chance of clearing it decreasing from 90% in the first zone to 45% in the final zone. A fall costs one life and sends the contestant back to the start of the current zone; clearing all obstacles in a zone activates its checkpoint. The run ends when all zones are cleared or all lives are lost. Rank by checkpoints reached, progress in the next zone, then lives remaining. Any remaining tie is randomized.",
+    settings: [
+      { key: "zones", label: "Course zones", type: "number", min: 2, max: 8, standard: 4 },
+      { key: "obstaclesPerZone", label: "Obstacles per zone", type: "number", min: 1, max: 8, standard: 3 },
+      { key: "startingLives", label: "Lives per contestant", type: "number", min: 1, max: 10, standard: 3 },
+    ],
+  },
+  {
     type: "SURVIVAL SIMULATION",
     category: "Round-based",
     label: "Hunger Games · Survival Simulation",
