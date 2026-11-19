@@ -222,17 +222,16 @@ window.RV_EVENT_CATALOG = [
     ],
   },
   {
-    type: "PARKOUR RUSH",
+    type: "PARKOUR WARRIOR",
     category: "Round-based",
-    label: "Parkour Rush",
+    label: "Parkour Warrior",
     mechanic: "parkour-rush",
     kind: "color",
-    description: "Contestants face a randomized checkpoint course where every jump is decided by chance.",
-    standardRules: "Run through four zones of three obstacles each. Every contestant has three lives. Each obstacle is independently randomized, with the chance of clearing it decreasing from 90% in the first zone to 45% in the final zone. A fall costs one life and sends the contestant back to the start of the current zone; clearing all obstacles in a zone activates its checkpoint. The run ends when all zones are cleared or all lives are lost. Rank by checkpoints reached, progress in the next zone, then lives remaining. Any remaining tie is randomized.",
+    description: "Race through randomized parkour rooms and routes; every jump and setback is decided by chance.",
+    standardRules: "All contestants run the same course of 12 rooms. At the start of each room, one of three routes is randomly selected for everyone: a longer, safer route; a balanced route; or a shorter, riskier shortcut. Each jump is randomized. A failed jump never eliminates a contestant or uses lives; it adds a time penalty before the jump is cleared. Reveal each room's route, jumps, setbacks, and split times for the full field. Everyone completes the course; lowest total time wins. Exact ties are randomized.",
     settings: [
-      { key: "zones", label: "Course zones", type: "number", min: 2, max: 8, standard: 4 },
-      { key: "obstaclesPerZone", label: "Obstacles per zone", type: "number", min: 1, max: 8, standard: 3 },
-      { key: "startingLives", label: "Lives per contestant", type: "number", min: 1, max: 10, standard: 3 },
+      { key: "rooms", label: "Course rooms", type: "number", min: 4, max: 20, standard: 12 },
+      { key: "jumpsPerRoom", label: "Jumps on the balanced route", type: "number", min: 2, max: 8, standard: 4 },
     ],
   },
   {

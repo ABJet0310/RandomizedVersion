@@ -318,103 +318,73 @@
   }
 
   function parkourRush(players, settings) {
-    const zones = Number(settings.zones ?? 4);
-    const obstaclesPerZone = Number(settings.obstaclesPerZone ?? 3);
-    const startingLives = Number(settings.startingLives ?? 3);
-    if (!Number.isInteger(zones) || zones < 2 || zones > 8) {
-      throw new Error("Parkour Rush must have between 2 and 8 zones.");
+    const rooms = Number(settings.rooms ?? 12);
+    const jumpsPerRoom = Number(settings.jumpsPerRoom ?? 4);
+    if (!Number.isInteger(rooms) || rooms < 4 || rooms > 20) {
+      throw new Error("Parkour Warrior must have between 4 and 20 rooms.");
     }
-    if (!Number.isInteger(obstaclesPerZone) || obstaclesPerZone < 1 || obstaclesPerZone > 8) {
-      throw new Error("Each Parkour Rush zone must have between 1 and 8 obstacles.");
-    }
-    if (!Number.isInteger(startingLives) || startingLives < 1 || startingLives > 10) {
-      throw new Error("Parkour Rush contestants must start with between 1 and 10 lives.");
+    if (!Number.isInteger(jumpsPerRoom) || jumpsPerRoom < 2 || jumpsPerRoom > 8) {
+      throw new Error("The balanced route must have between 2 and 8 jumps per room.");
     }
 
+    const routes = [
+      { name: "Scenic route", jumps: jumpsPerRoom + 1, successPercent: 90, jumpTime: 2400, retryPenalty: 400 },
+      { name: "Balanced route", jumps: jumpsPerRoom, successPercent: 70, jumpTime: 1800, retryPenalty: 800 },
+      { name: "Shortcut", jumps: jumpsPerRoom - 1, successPercent: 45, jumpTime: 900, retryPenalty: 1400 },
+    ];
     const runs = new Map(players.map((player) => [player.id, {
-      checkpoints: 0,
-      lives: startingLives,
-      falls: 0,
-      progress: 0,
-      finished: false,
+      totalTime: 0,
+      totalSetbacks: 0,
+      roomsCompleted: 0,
     }]));
     const eventRounds = [];
 
-    for (let zoneIndex = 0; zoneIndex < zones; zoneIndex += 1) {
-      const contestants = players.filter((player) => !runs.get(player.id).finished);
-      if (!contestants.length) break;
-      const successPercent = Math.round(90 - (45 * zoneIndex) / (zones - 1));
-      const zoneResults = contestants.map((player) => {
+    for (let room = 1; room <= rooms; room += 1) {
+      const route = randomOrder(routes)[0];
+      const runners = players.map((player) => {
         const run = runs.get(player.id);
-        const attempts = [];
-        let progress = 0;
-        let furthestProgress = 0;
-        let cleared = false;
-
-        while (run.lives > 0 && !cleared) {
-          const outcomes = [];
-          for (let obstacleIndex = 0; obstacleIndex < obstaclesPerZone; obstacleIndex += 1) {
-            const obstacleCleared = Math.random() * 100 < successPercent;
-            outcomes.push({ obstacle: obstacleIndex + 1, cleared: obstacleCleared });
-            if (obstacleCleared) {
-              progress += 1;
-              furthestProgress = Math.max(furthestProgress, progress);
-              continue;
-            }
-            run.lives -= 1;
-            run.falls += 1;
-            attempts.push({ outcomes });
-            progress = 0;
-            break;
-          }
-          if (progress === obstaclesPerZone) {
-            cleared = true;
-            attempts.push({ outcomes });
-          }
+        const jumps = [];
+        let roomTime = 0;
+        for (let jump = 1; jump <= route.jumps; jump += 1) {
+          let setbacks = 0;
+          while (Math.random() * 100 >= route.successPercent && setbacks < 100) setbacks += 1;
+          const jumpTime = route.jumpTime + Math.floor(Math.random() * 801) + setbacks * route.retryPenalty;
+          roomTime += jumpTime;
+          jumps.push({ jump, setbacks, time: jumpTime });
+          run.totalSetbacks += setbacks;
         }
-
-        if (cleared) {
-          run.checkpoints += 1;
-          run.progress = 0;
-          if (run.checkpoints === zones) run.finished = true;
-        } else {
-          run.progress = furthestProgress;
-          if (run.lives === 0) run.finished = true;
-        }
+        run.totalTime += roomTime;
+        run.roomsCompleted += 1;
         return {
           id: player.id,
           name: player.username ?? player.name,
-          attempts,
-          cleared,
-          checkpoints: run.checkpoints,
-          progress: run.progress,
-          lives: run.lives,
-          falls: run.falls,
-          outOfLives: run.lives === 0,
+          route: route.name,
+          jumps,
+          roomTime,
+          totalTime: run.totalTime,
+          roomsCompleted: run.roomsCompleted,
         };
       });
       eventRounds.push({
-        zone: zoneIndex + 1,
-        successPercent,
-        obstacleCount: obstaclesPerZone,
-        runners: zoneResults,
+        room,
+        route: route.name,
+        successPercent: route.successPercent,
+        runners,
       });
     }
 
+    const formatTime = (milliseconds) => {
+      const seconds = (milliseconds / 1000).toFixed(2);
+      return `${seconds}s`;
+    };
     const results = players.map((player) => {
       const run = runs.get(player.id);
-      const performance = run.checkpoints * (obstaclesPerZone + 1) + run.progress;
-      const detail = run.checkpoints === zones
-        ? `Course cleared · ${run.lives} ${run.lives === 1 ? "life" : "lives"} remaining · ${run.falls} ${run.falls === 1 ? "fall" : "falls"}`
-        : `Checkpoint ${run.checkpoints} · ${run.progress}/${obstaclesPerZone} obstacles into Zone ${run.checkpoints + 1} · ${run.lives} ${run.lives === 1 ? "life" : "lives"} remaining · ${run.falls} ${run.falls === 1 ? "fall" : "falls"}`;
       return {
         id: player.id,
         name: player.username ?? player.name,
-        points: performance,
-        eventTiebreakScore: [run.lives],
-        eventTiebreakLabels: ["Lives remaining"],
-        eventTiebreakDisplay: [`${run.lives} remaining`],
-        detail,
+        points: -run.totalTime,
+        detail: `${formatTime(run.totalTime)} total · ${rooms} rooms · ${run.totalSetbacks} failed jumps`,
+        parkourTime: run.totalTime,
       };
     });
     results.eventRounds = eventRounds;

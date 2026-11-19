@@ -968,20 +968,20 @@ function eventRoundsMarkup(rounds, players) {
   const parkourRounds = rounds.some((round) => Array.isArray(round.runners));
   const heading = catchingRounds
     ? `${rounds.filter((round) => !round.isTiebreak).length} Catching rounds`
-    : parkourRounds ? `${rounds.length} Parkour zones` : `${rounds.length} survival phases`;
+    : parkourRounds ? `${rounds.length} Parkour rooms` : `${rounds.length} survival phases`;
   return `<details class="event-round-log">
     <summary>View ${escapeHtml(heading)}</summary>
     ${rounds.map((round) => {
       if (Array.isArray(round.runners)) {
+        if (round.room) {
+          return `<section><h4>Room ${round.room} · ${escapeHtml(round.route)}</h4>
+            <ul>${round.runners.map((runner) => {
+              const setbacks = runner.jumps.map((jump) => `Jump ${jump.jump}: ${jump.setbacks} setback${jump.setbacks === 1 ? "" : "s"}`).join(" · ");
+              return `<li>${escapeHtml(names.get(runner.id) ?? runner.name)} · ${formatRunTime(runner.roomTime)} room split · ${formatRunTime(runner.totalTime)} total · ${setbacks}</li>`;
+            }).join("")}</ul></section>`;
+        }
         return `<section><h4>Zone ${round.zone} · ${round.successPercent}% obstacle success chance</h4>
-          <ul>${round.runners.map((runner) => {
-            const attempts = runner.attempts.map((attempt, index) =>
-              `Attempt ${index + 1}: ${attempt.outcomes.map((outcome) => outcome.cleared ? "cleared" : `fell at obstacle ${outcome.obstacle}`).join(", ")}`).join(" · ");
-            const status = runner.cleared
-              ? `Checkpoint ${runner.checkpoints} reached`
-              : `${runner.progress}/${round.obstacleCount} obstacles into the zone${runner.outOfLives ? " · out of lives" : ""}`;
-            return `<li>${escapeHtml(names.get(runner.id) ?? runner.name)} · ${escapeHtml(status)} · ${runner.lives} lives left · ${escapeHtml(attempts)}</li>`;
-          }).join("")}</ul></section>`;
+          <ul>${round.runners.map((runner) => `<li>${escapeHtml(names.get(runner.id) ?? runner.name)} · ${runner.progress}/${round.obstacleCount} obstacles · ${runner.lives} lives left</li>`).join("")}</ul></section>`;
       }
       if (Array.isArray(round.order)) {
         const outcomes = Object.entries(round.caughtBy ?? {}).map(([id, count]) =>
@@ -1654,18 +1654,18 @@ function renderEurovisionRoundResults(round) {
   </div>`;
 }
 
-function renderParkourZone(round) {
+function formatRunTime(milliseconds) {
+  return `${(milliseconds / 1000).toFixed(2)}s`;
+}
+
+function renderParkourRoom(round) {
   return `<section class="runner-round-results">
-    <h4>Zone ${round.zone} · ${round.successPercent}% obstacle success chance</h4>
+    <h4>Room ${round.room} · ${escapeHtml(round.route)}</h4>
     <div class="standalone-results-wrap"><table class="results-table">
-      <thead><tr><th>PARTICIPANT</th><th>ATTEMPTS</th><th>ZONE RESULT</th><th>LIVES</th></tr></thead>
+      <thead><tr><th>PARTICIPANT</th><th>JUMP SETBACKS</th><th>ROOM SPLIT</th><th>TOTAL TIME</th></tr></thead>
       <tbody>${round.runners.map((runner) => {
-        const attempts = runner.attempts.map((attempt, index) =>
-          `Attempt ${index + 1}: ${attempt.outcomes.map((outcome) => outcome.cleared ? "CLEAR" : `FALL at obstacle ${outcome.obstacle}`).join(", ")}`).join(" · ");
-        const result = runner.cleared
-          ? `Checkpoint ${runner.checkpoints} reached`
-          : `${runner.progress}/${round.obstacleCount} obstacles${runner.outOfLives ? " · run ended" : " · checkpoint reset"}`;
-        return `<tr><th scope="row">${escapeHtml(runner.name)}</th><td>${escapeHtml(attempts)}</td><td>${escapeHtml(result)}</td><td>${runner.lives}</td></tr>`;
+        const setbacks = runner.jumps.map((jump) => `Jump ${jump.jump}: ${jump.setbacks}`).join(" · ");
+        return `<tr><th scope="row">${escapeHtml(runner.name)}</th><td>${escapeHtml(setbacks)}</td><td>${formatRunTime(runner.roomTime)}</td><td>${formatRunTime(runner.totalTime)}</td></tr>`;
       }).join("")}</tbody>
     </table></div>
   </section>`;
@@ -1684,14 +1684,14 @@ function renderStandaloneRunner() {
   if (runner.type === "parkour-rush") {
     if (runner.phase === "ready") {
       content = `<section class="runner-round-results"><h4>Course ready</h4>
-        <p>${runner.settings.zones} zones · ${runner.settings.obstaclesPerZone} obstacles per zone · ${runner.settings.startingLives} lives per contestant. Clear a zone to activate its checkpoint; a fall costs a life and restarts that zone.</p></section>`;
-      nextLabel = "Start Parkour Rush";
+        <p>${runner.settings.rooms} rooms · ${runner.settings.jumpsPerRoom} jumps on the balanced route. The same randomized route is used for the whole field in each room. Setbacks add time; nobody is eliminated, and everyone finishes.</p></section>`;
+      nextLabel = "Start Parkour Warrior";
     } else if (runner.phase === "complete") {
-      content = `<h4>Final Parkour Rush results</h4>${renderStandaloneResults(runner.results)}`;
+      content = `<h4>Final Parkour Warrior results</h4>${renderStandaloneResults(runner.results)}`;
     } else {
-      content = renderParkourZone(runner.eventRounds[runner.roundIndex]);
+      content = renderParkourRoom(runner.eventRounds[runner.roundIndex]);
       nextLabel = runner.roundIndex + 1 < runner.eventRounds.length
-        ? `Reveal Zone ${runner.eventRounds[runner.roundIndex + 1].zone}`
+        ? `Reveal Room ${runner.eventRounds[runner.roundIndex + 1].room}`
         : "Show final results";
     }
   } else if (runner.type === "eurovision") {
