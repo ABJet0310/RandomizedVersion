@@ -160,6 +160,8 @@ button { color: inherit; }
 .standalone-bingo-boards article > strong { display: block; overflow: hidden; margin-bottom: 7px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .bingo-ended-banner { margin-bottom: 10px; padding: 12px; border: 1px solid var(--accent-dark); color: var(--accent); font: 10px var(--mono); letter-spacing: .1em; text-align: center; }
 .standalone-results-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; }
+.parkour-results-wrap { max-height: none; overflow-x: auto; overflow-y: visible; }
+.runner-next-sticky { position: sticky; z-index: 3; bottom: 12px; display: flex; width: fit-content; margin-left: auto; box-shadow: 0 0 0 8px #111412; }
 .standalone-results-wrap .results-table { min-width: 340px; }
 .standalone-results-wrap .results-table tbody td:last-child { min-width: 160px; white-space: normal; font-family: var(--sans); line-height: 1.5; }
 .bakery-results { display: grid; gap: 12px; max-height: 520px; overflow: auto; }

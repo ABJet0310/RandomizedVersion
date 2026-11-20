@@ -1683,7 +1683,7 @@ function renderParkourStage(round) {
   if (round.stage) {
     return `<section class="runner-round-results">
       <h4>${escapeHtml(round.label)}</h4>
-      <div class="standalone-results-wrap"><table class="results-table">
+      <div class="standalone-results-wrap parkour-results-wrap"><table class="results-table">
         <thead><tr><th>PARTICIPANT</th><th>PROGRESS / RESULT</th><th>OBSTACLES</th><th>COINS</th><th>TIME</th></tr></thead>
         <tbody>${round.participants.map((participant) => {
           const obstacles = (participant.obstacles ?? (participant.obstacle ? [participant.obstacle] : []))
@@ -1705,7 +1705,7 @@ function renderParkourStage(round) {
   }
   return `<section class="runner-round-results">
     <h4>Room ${round.room} · ${escapeHtml(round.route)}</h4>
-    <div class="standalone-results-wrap"><table class="results-table">
+    <div class="standalone-results-wrap parkour-results-wrap"><table class="results-table">
       <thead><tr><th>PARTICIPANT</th><th>JUMP SETBACKS</th><th>ROOM SPLIT</th><th>TOTAL TIME</th></tr></thead>
       <tbody>${round.runners.map((runner) => {
         const setbacks = runner.jumps.map((jump) => `Jump ${jump.jump}: ${jump.setbacks}`).join(" · ");
@@ -1845,7 +1845,7 @@ function renderStandaloneRunner() {
   panel.innerHTML = `
     <div class="runner-heading"><div><span class="eyebrow"><span class="eyebrow-line"></span> ${complete ? "EVENT COMPLETE" : "LIVE EVENT"}</span><h3>${escapeHtml(runner.eventTitle ?? runner.format.label)}</h3></div></div>
     ${content}
-    ${complete ? "" : `<button class="button button-primary runner-next" id="standalone-next" type="button">${escapeHtml(nextLabel)} <span class="button-arrow">↗</span></button>`}
+    ${complete ? "" : `<button class="button button-primary runner-next${runner.type === "parkour-rush" ? " runner-next-sticky" : ""}" id="standalone-next" type="button">${escapeHtml(nextLabel)} <span class="button-arrow">↗</span></button>`}
   `;
 }
 
