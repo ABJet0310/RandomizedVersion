@@ -340,8 +340,9 @@
     const finalePaths = [
       { name: "Easy", parts: 3, successPercent: 97, multiplier: 0.15 },
       { name: "Medium", parts: 2, successPercent: 87, multiplier: 0.35 },
-      { name: "Hard", parts: 2, successPercent: 70, multiplier: 0.8 },
+      { name: "Hard", parts: 2, successPercent: 68, multiplier: 0.8 },
     ];
+    const bonusEntryChanceOffsets = [10, 5, 0, 0, -10];
     const bonusCoinSchedule = {
       bronze: [0, 5, 15, 25, 40, 60],
       silver: [0, 10, 25, 45, 70, 100],
@@ -430,6 +431,7 @@
 
     for (let index = 0; index < bonusPaths.length; index += 1) {
       const path = bonusPaths[index];
+      const pathEntryChance = Math.max(0, Math.min(100, bonusEntryChance + bonusEntryChanceOffsets[index]));
       const participants = players.map((player) => {
         const run = runs.get(player.id);
         const record = {
@@ -445,7 +447,7 @@
           timedOut: run.timedOut,
         };
         if (run.timedOut) return record;
-        if (Math.random() * 100 >= bonusEntryChance) {
+        if (Math.random() * 100 >= pathEntryChance) {
           record.status = "Skipped bonus path";
           return record;
         }
@@ -460,6 +462,12 @@
             const medal = medalForPart[obstacle - 1];
             run.medals[medal] += 1;
             record.medalsAwarded.push(medal);
+            if (obstacle < 3 && Math.random() < 0.5) {
+              record.status = `Returned to main path after earning ${medal} medal`;
+              record.teleported = true;
+              record.voluntaryReturn = true;
+              break;
+            }
             continue;
           }
           if (run.timedOut) {
@@ -477,6 +485,7 @@
       });
       pushStage("bonus", index + 1, `Bonus Path ${index + 1} · ${path.difficulty}`, participants, {
         difficulty: path.difficulty,
+        entryChance: pathEntryChance,
       });
       runMainZone(index + 1);
     }
@@ -530,9 +539,18 @@
             continue;
           }
 
+          if (run.timedOut || run.elapsed > timeLimit) {
+            run.finalFailed = true;
+            record.status = run.timedOut
+              ? "Overtime limit reached · incomplete"
+              : "Overtime failure · incomplete";
+            finalRecords.push(record);
+            break;
+          }
+
           const easierPaths = finalePaths.slice(0, finalePaths.indexOf(path));
-          const downgradeAllowed = !run.timedOut && run.elapsed < timeLimit - 30_000;
-          if (downgradeAllowed && easierPaths.length) {
+          const maySwitchToEasier = run.elapsed < timeLimit - 30_000 && easierPaths.length > 0;
+          if (maySwitchToEasier && Math.random() < 0.5) {
             const easierPath = randomOrder(easierPaths)[0];
             record.downgradedTo = easierPath.name;
             record.status = `Failed · teleported to ${easierPath.name} and restarted`;
@@ -540,18 +558,13 @@
             run.finalParts = 0;
             path = easierPath;
             restartOnEasierPath = true;
-          } else {
-            run.finalFailed = true;
-            record.status = run.timedOut
-              ? "Overtime limit reached · incomplete"
-              : run.elapsed > timeLimit
-                ? "Overtime failure · incomplete"
-                : run.elapsed >= timeLimit - 30_000
-                  ? "Failed in final 30 seconds · incomplete"
-                  : "Easiest finale path failed · incomplete";
+            finalRecords.push(record);
+            break;
           }
+
+          record.status = "Failed · retrying this part on the same path";
           finalRecords.push(record);
-          break;
+          part -= 1;
         }
         if (!restartOnEasierPath) break;
       }
